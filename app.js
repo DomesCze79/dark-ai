@@ -26,7 +26,7 @@ function saveJSON(key, val) {
 
 /* ---------- state ---------- */
 const DEF_SETTINGS = {
-  provider: 'gemini', apiKey: '', model: 'gemini-3.8-flash',
+  provider: 'gemini', apiKey: '', model: 'gemini-3.5-flash-lite',
   search: true,
   name: 'Dark', avatar: '🤖', preset: 'universal', openMode: true, extra: '',
   appName: 'Dark AI', themePreset: 'mono',
@@ -68,7 +68,7 @@ function saveMemory() { saveJSON('mai.memory', memory); }
 function currentModel() {
   const m = (settings.model || '').trim();
   if (m) return m;
-  return settings.provider === 'openai' ? 'gpt-4o-mini' : 'gemini-3.8-flash';
+  return settings.provider === 'openai' ? 'gpt-4o-mini' : 'gemini-3.5-flash-lite';
 }
 
 const MODEL_OPTS = [
@@ -1739,19 +1739,29 @@ async function send(text) {
     renderChatList();
   } catch (e) {
     const msg = e.message || String(e);
-    if (/quota|429|rate|RESOURCE_EXHAUSTED|exceeded/i.test(msg)) {
-      if (/3\.8/.test(settings.model || '')) {
-        settings.model = 'gemini-3.5-flash-lite';
-        saveSettings(); syncModeUI();
-        bubble.innerHTML = '<p>⚠️ Dočasný limit zdarma u modelu 3.8 – přepnul jsem tě na <b>💨 Gemini 3.5 Lite</b>.</p>' +
-          '<p class="muted small">Zkus to prosím za chvilku znovu, teď už pojede na lehčím modelu. Limit se časem sám obnoví.</p>';
-      } else {
+    const quota = /quota|429|rate|RESOURCE_EXHAUSTED|exceeded/i.test(msg);
+    let done = false;
+    if (quota && /3\.8/.test(settings.model || '')) {
+      settings.model = 'gemini-3.5-flash-lite';
+      saveSettings(); syncModeUI();
+      try {
+        const hist = chat.messages.slice(-30).map((m) => ({ role: m.role, content: m.content, image: m.image, mime: m.mime }));
+        const r = await chatOnce(hist, buildSystem());
+        const content = ((r.text || '').trim()) || '(model nevrátil odpověď)';
+        chat.messages.push({ role: 'assistant', content });
+        saveChats();
+        bubble.innerHTML = '<div class="mem-chip">💨 Přepnul jsem na Gemini 3.5 Lite (model 3.8 má plný limit)</div>' + renderMd(content);
+        done = true;
+      } catch (e2) { /* zkusí se spodní hláška */ }
+    }
+    if (!done) {
+      if (quota) {
         bubble.innerHTML = '<p>⚠️ AI teď má plno (dočasný limit zdarma) – nic se neděje.</p>' +
-          '<p class="muted small">Počkej pár minut a zkus to znovu. Své využití vidíš na aistudio.google.com (sekce Usage).</p>';
+          '<p class="muted small">Počkej pár minut a zkus to znovu. Využití limitu najdeš na aistudio.google.com (sekce Usage).</p>';
+      } else {
+        bubble.innerHTML = '<p>⚠️ Chyba: ' + esc(msg) + '</p>' +
+          '<p class="muted small">Zkontroluj API klíč, model a připojení v Nastavení. U Gemini zdarma klíč získeš na aistudio.google.com/apikey.</p>';
       }
-    } else {
-      bubble.innerHTML = '<p>⚠️ Chyba: ' + esc(msg) + '</p>' +
-        '<p class="muted small">Zkontroluj API klíč, model a připojení v Nastavení. U Gemini zdarma klíč získeš na aistudio.google.com/apikey.</p>';
     }
   } finally {
     $('#topStatus').textContent = 'připraven/a';
@@ -2124,7 +2134,7 @@ function initSettings() {
     settings.provider = provEl.value;
     const m = settings.model || '';
     if (settings.provider === 'openai' && (!m || /gemini|veo/i.test(m))) settings.model = 'gpt-4o-mini';
-    if (settings.provider === 'gemini' && (!m || /^gpt/i.test(m))) settings.model = 'gemini-3.8-flash';
+    if (settings.provider === 'gemini' && (!m || /^gpt/i.test(m))) settings.model = 'gemini-3.5-flash-lite';
     modelEl.value = settings.model;
     saveSettings();
     syncHeader();
