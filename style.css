@@ -341,3 +341,17 @@ audio { filter: invert(0.92) hue-rotate(180deg); }
 }
 #chatPanel .btn.primary { background: #3a3a41; border: 1px solid #4c4c55; box-shadow: none; color: #fff; }
 #chatPanel .btn.primary:hover { background: #4a4a52; }
+
+/* ===== v6: pásek chatů (záložky projektů) nad psaním ===== */
+#chatStrip {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  padding: 8px 12px 2px; background: #17171a;
+}
+#chatStrip::-webkit-scrollbar { display: none; }
+.strip-chip {
+  flex-shrink: 0; padding: 6px 13px; border-radius: 999px; border: 1px solid #3a3a40;
+  background: #232327; color: #c9c9d1; font-size: 12px; cursor: pointer;
+  max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.strip-chip.active { background: #55555e; color: #fff; border-color: #6a6a74; }
+.strip-chip.add { background: #2e2e34; font-weight: 700; }
