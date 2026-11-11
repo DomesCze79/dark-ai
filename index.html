@@ -277,6 +277,7 @@
         <label>Poskytovatel</label>
         <select id="setProvider">
           <option value="gemini">Google Gemini (zdarma – doporučuji)</option>
+          <option value="openrouter">OpenRouter (zdarma modely – Llama, DeepSeek…)</option>
           <option value="openai">OpenAI (ChatGPT – vlastní klíč)</option>
         </select>
         <label>API klíč <span class="muted small">ukládá se jen v tvém prohlížeči</span></label>
@@ -285,6 +286,12 @@
           <button class="btn" id="btnShowKey" type="button">👁</button>
         </div>
         <p class="muted small">Zdarma klíč: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → přihlas se Google účtem → „Create API key" → zkopíruj. Pro OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>.</p>
+        <label>OpenRouter klíč <span class="muted small">jen pro modely OpenRouter</span></label>
+        <div class="row">
+          <input type="password" id="setOrKey" placeholder="vlož OpenRouter klíč…">
+          <button class="btn" id="btnShowOrKey" type="button">👁</button>
+        </div>
+        <p class="muted small">Zdarma klíč: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a> → přihlas se → „Create Key" → zkopíruj. Najdeš tam hromadu modelů zdarma (Llama, DeepSeek, Gemma…).</p>
         <label>Model chatu</label>
         <input id="setModel" placeholder="gemini-3.5-flash-lite">
         <p class="muted small">Gemini: <code>gemini-3.5-flash-lite</code> (doporučený – zdarma), <code>gemini-3.5-flash-lite</code> (rychlý). OpenAI: <code>gpt-4o-mini</code>, <code>gpt-4o</code>…</p>
