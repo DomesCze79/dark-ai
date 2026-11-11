@@ -1738,8 +1738,21 @@ async function send(text) {
     }
     renderChatList();
   } catch (e) {
-    bubble.innerHTML = '<p>⚠️ Chyba: ' + esc(e.message || String(e)) + '</p>' +
-      '<p class="muted small">Zkontroluj API klíč, model a připojení v Nastavení. U Gemini zdarma klíč získeš na aistudio.google.com/apikey.</p>';
+    const msg = e.message || String(e);
+    if (/quota|429|rate|RESOURCE_EXHAUSTED|exceeded/i.test(msg)) {
+      if (/3\.8/.test(settings.model || '')) {
+        settings.model = 'gemini-3.5-flash-lite';
+        saveSettings(); syncModeUI();
+        bubble.innerHTML = '<p>⚠️ Dočasný limit zdarma u modelu 3.8 – přepnul jsem tě na <b>💨 Gemini 3.5 Lite</b>.</p>' +
+          '<p class="muted small">Zkus to prosím za chvilku znovu, teď už pojede na lehčím modelu. Limit se časem sám obnoví.</p>';
+      } else {
+        bubble.innerHTML = '<p>⚠️ AI teď má plno (dočasný limit zdarma) – nic se neděje.</p>' +
+          '<p class="muted small">Počkej pár minut a zkus to znovu. Své využití vidíš na aistudio.google.com (sekce Usage).</p>';
+      }
+    } else {
+      bubble.innerHTML = '<p>⚠️ Chyba: ' + esc(msg) + '</p>' +
+        '<p class="muted small">Zkontroluj API klíč, model a připojení v Nastavení. U Gemini zdarma klíč získeš na aistudio.google.com/apikey.</p>';
+    }
   } finally {
     $('#topStatus').textContent = 'připraven/a';
     scrollBottom();
