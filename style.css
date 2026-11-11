@@ -265,3 +265,40 @@ video { width: 100%; border-radius: 14px; margin-top: 12px; background: #000; }
 #fileList .mem-item .dl { margin-left: auto; }
 .chat-audio { width: 100%; max-width: 430px; margin-top: 10px; border-radius: 12px; }
 audio { filter: invert(0.92) hue-rotate(180deg); }
+
+/* ===== v4: dolní lišta režimů (mobil), panel chatů, přejmenování ===== */
+#tabbar { display: none; }
+#chatPanel {
+  position: fixed; top: 68px; left: 10px; right: 10px; max-width: 420px; margin-left: auto;
+  max-height: 62vh; overflow-y: auto; z-index: 45;
+  background: var(--card); border: 1px solid var(--card-b); border-radius: 16px;
+  padding: 13px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 9px;
+}
+#chatPanel.hidden { display: none !important; }
+.chat-panel-head { font-weight: 700; font-size: 14px; }
+#chatPanelList { display: flex; flex-direction: column; gap: 4px; }
+.chat-item .ren { opacity: 0; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+.chat-item:hover .ren { opacity: 1; }
+#chatPanel .chat-item .del, #chatPanel .chat-item .ren,
+#chatList .chat-item .del, #chatList .chat-item .ren { opacity: .75; }
+@media (max-width: 900px) {
+  #tabbar {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 32;
+    background: rgba(11, 7, 8, 0.94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--card-b);
+    padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.35);
+  }
+  #tabbar .nav-btn {
+    flex: 1; flex-direction: column; gap: 2px; padding: 6px 2px 5px; font-size: 10.5px;
+    text-align: center; justify-content: center; border-radius: 12px; line-height: 1.25;
+  }
+  #tabbar .nav-btn.active {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    box-shadow: none;
+  }
+  main { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  #chatPanel { top: 62px; }
+  .top-actions { gap: 7px; }
+}
