@@ -85,6 +85,7 @@ async function chatOnceWith(model, history, sys) {
 function menuFor(menu) {
   $('#modeMenu').classList.add('hidden');
   $('#modelMenu').classList.add('hidden');
+  $('#toolsMenu').classList.add('hidden');
   if (menu) menu.classList.toggle('hidden');
 }
 
@@ -103,10 +104,12 @@ function syncModeUI() {
   const mode = (settings && settings.chatMode) || 'agent';
   const names = { battle: '⚔️ Battle', agent: '🤖 Agent', chat: '💬 Chat', team: '🐝 Tým' };
   const bm = $('#btnMode');
-  if (bm) bm.textContent = (names[mode] || names.agent) + ' ▾';
+  if (bm) bm.innerHTML = (names[mode] || names.agent) + ' <small>▾</small>';
   $$('#modeMenu .mode-opt').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
   const pm = $('#btnModel');
-  if (pm && settings) pm.textContent = modelLabel(currentModel()) + ' ▾';
+  if (pm && settings) pm.innerHTML = '⚡ ' + esc(modelLabel(currentModel())) + ' <small>▾</small>';
+  const ss = $('#toolSearchState'); if (ss && settings) ss.textContent = settings.search ? 'zapnuto' : 'vypnuto';
+  const vs = $('#toolVoiceState'); if (vs && settings) vs.textContent = settings.voiceReplies ? 'zapnuto' : 'vypnuto';
   const oppHead = $('#oppHead'), oppList = $('#oppList');
   if (oppHead) oppHead.classList.toggle('hidden', mode !== 'battle');
   if (oppList) {
@@ -1455,7 +1458,21 @@ function getChat(create) {
 function fillChatList(list) {
   if (!list) return;
   list.innerHTML = '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const yest = new Date(today); yest.setDate(yest.getDate() - 1);
+  let lastGroup = null;
   for (const c of chats) {
+    const ts = new Date(c.ts || 0);
+    let g = '⭐️ Starší';
+    if (ts >= today) g = 'Dnes';
+    else if (ts >= yest) g = 'Včera';
+    if (g !== lastGroup) {
+      lastGroup = g;
+      const h = document.createElement('div');
+      h.className = 'side-label';
+      h.textContent = g;
+      list.appendChild(h);
+    }
     const el = document.createElement('div');
     el.className = 'chat-item' + (c.id === currentChatId ? ' active' : '');
     el.innerHTML = `<span>${esc(c.title)}</span><button class="ren" title="Přejmenovat">✎</button><button class="del" title="Smazat">✕</button>`;
@@ -2278,6 +2295,7 @@ function initChrome() {
     e.stopPropagation();
     const m = $('#modeMenu');
     menuFor(m.classList.contains('hidden') ? m : null);
+    syncModeUI();
   });
   $('#btnModel').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -2285,9 +2303,27 @@ function initChrome() {
     menuFor(m.classList.contains('hidden') ? m : null);
     syncModeUI();
   });
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.pop-menu') && e.target.id !== 'btnMode' && e.target.id !== 'btnModel') menuFor(null);
+  $('#btnTools').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const m = $('#toolsMenu');
+    menuFor(m.classList.contains('hidden') ? m : null);
+    syncModeUI();
   });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.pop-menu') && !['btnMode', 'btnModel', 'btnTools'].includes(e.target.id)) menuFor(null);
+  });
+  $('#toolAttach').addEventListener('click', () => { menuFor(null); $('#attachInput').click(); });
+  $('#toolSearch').addEventListener('click', () => {
+    settings.search = !settings.search;
+    saveSettings(); syncHeader(); syncModeUI();
+    toast(settings.search ? '🌐 Hledání na webu zapnuto' : '🌐 Hledání na webu vypnuto');
+  });
+  $('#toolVoice').addEventListener('click', () => {
+    settings.voiceReplies = !settings.voiceReplies;
+    saveSettings(); syncHeader(); syncModeUI();
+    toast(settings.voiceReplies ? '🔊 Hlasové odpovědi zapnuty' : '🔊 Hlasové odpovědi vypnuty');
+  });
+  $('#toolGithub').addEventListener('click', () => { menuFor(null); switchView('settings'); });
   $$('#modeMenu .mode-opt').forEach((b) => b.addEventListener('click', () => {
     settings.chatMode = b.dataset.mode;
     saveSettings();
