@@ -450,3 +450,8 @@ audio { filter: invert(0.92) hue-rotate(180deg); }
   main { padding-bottom: 0; }
 }
 #tabbar { display: none !important; }
+
+/* ===== v11: safe-area – lišta pod pruhem iPhonu (PWA na ploše) ===== */
+#topbar { padding-top: calc(8px + env(safe-area-inset-top)); }
+#sidebar { padding-top: calc(12px + env(safe-area-inset-top)); }
+#chatPanel { top: calc(64px + env(safe-area-inset-top)); }
