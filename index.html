@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#140b0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dark AI">
+<title>Dark AI – tvoje vlastní AI</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-512.png">
+<link rel="apple-touch-icon" href="icons/icon-512.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="overlay" class="hidden"></div>
+
+  <aside id="sidebar">
+    <div class="brand">
+      <span id="brandIcon" class="avatar">🤖</span>
+      <div><b>Dark AI</b><small>tvoje vlastní AI</small></div>
+    </div>
+    <button class="btn primary wide" id="btnNewChat">＋ Nový chat</button>
+    <div class="side-label">Konverzace</div>
+    <div id="chatList"></div>
+    <nav class="side-nav">
+      <button class="nav-btn active" data-view="chat">💬 Chat</button>
+      <button class="nav-btn" data-view="studio">🎬 Studio</button>
+      <button class="nav-btn" data-view="plugins">🧩 Funkce</button>
+      <button class="nav-btn" data-view="pc">🖥️ Počítač</button>
+      <button class="nav-btn" data-view="settings">⚙️ Nastavení</button>
+    </nav>
+  </aside>
+
+  <main>
+    <header id="topbar">
+      <button id="btnMenu" class="icon-btn" aria-label="Menu">☰</button>
+      <div class="title">
+        <span id="topAvatar" class="avatar">🤖</span>
+        <div><b id="topName">Dark</b><small id="topStatus">připraven/a</small></div>
+      </div>
+      <div class="top-actions">
+        <button id="btnSearch" class="icon-btn on" title="Hledání na webu">🌐</button>
+        <button id="btnVoice" class="icon-btn on" title="Hlasové odpovědi">🔊</button>
+        <button id="btnMic" class="icon-btn" title="Mluvit místo psaní">🎙️</button>
+        <button id="btnCall" class="icon-btn" title="Hovor – mluv a poslouchej">📞</button>
+      </div>
+    </header>
+
+    <!-- ================= CHAT ================= -->
+    <section id="view-chat" class="view">
+      <div id="messages">
+        <div id="emptyState">
+          <div class="hero-avatar" id="heroAvatar">🤖</div>
+          <h2>Ahoj, jsem <span id="heroName">Dark</span> 👋</h2>
+          <p class="muted">Tvoje vlastní AI. Mluv se mnou, programuj, tvoř videa a dabing,<br>nebo se ptej na cokoliv – jsem tu pro tebe.</p>
+          <div class="suggestions">
+            <button class="chip">Napiš mi Python skript na stažení videí z YouTube</button>
+            <button class="chip">Vysvětli mi kvantovou mechaniku lidsky</button>
+            <button class="chip">Co je dnes nového ve světě?</button>
+            <button class="chip">Napiš scénář na krátké video</button>
+          </div>
+          <p class="hint" id="keyHint"></p>
+        </div>
+      </div>
+      <div id="composer">
+        <div id="recBar" class="hidden"><span class="rec-dot"></span><span id="recText">Poslouchám…</span><button id="recStop" class="icon-btn small">✕</button></div>
+        <div id="attachPreview" class="hidden"></div>
+        <div class="composer-row">
+          <button id="btnAttach" class="icon-btn" title="Přiložit obrázek – AI ho přečte">📎</button>
+          <input type="file" id="attachInput" accept="image/*" hidden>
+          <textarea id="input" rows="1" placeholder="Napiš zprávu, nebo zmáčkni 🎙️ a mluv…"></textarea>
+          <button id="btnSend" class="icon-btn send" aria-label="Odeslat">➤</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STUDIO ================= -->
+    <section id="view-studio" class="view hidden">
+      <div class="card">
+        <h3>🎙️ Dabing &amp; hlas</h3>
+        <p class="muted">Napiš text (nebo si ho nech sepsat v chatu) a proměň ho v nahraný hlasový komentář – jako dabing.</p>
+        <textarea id="stScript" rows="5" placeholder="Text k namluvení…"></textarea>
+        <div class="row">
+          <button class="btn primary" id="stTts">🎙️ Vygenerovat dabing</button>
+          <button class="btn" id="stPlay" disabled>Přehrát</button>
+          <a class="btn" id="stWav" download="dabing.wav" hidden>⬇ Stáhnout .wav</a>
+        </div>
+        <p class="muted small" id="stTtsInfo"></p>
+      </div>
+
+      <div class="card">
+        <h3>🎬 Video z textu</h3>
+        <p class="muted">Vytvoří video, kde text ožívá v rytmu nahraného hlasu (kinetické video + dabing). Funguje vždy, i zdarma.</p>
+        <div class="row">
+          <button class="btn primary" id="stVideo">🎬 Vytvořit video</button>
+          <a class="btn" id="stVideoDl" download="dark-ai-video.webm" hidden>⬇ Stáhnout video</a>
+        </div>
+        <div id="stVideoWrap" hidden><video id="stVideoPlayer" controls playsinline></video></div>
+      </div>
+
+      <div class="card">
+        <h3>🏗️ Weby, appky &amp; software</h3>
+        <p class="muted">Popiš, co chceš – AI to postaví jako kompletní funkční projekt (stránka, hra, appka, nástroj) a rovnou ho uvidíš živě.</p>
+        <textarea id="stProjPrompt" rows="3" placeholder="Např.: web mé kapely s přehrávačem, kalkulačka, jednoduchá hra had, dashboard, aplikace na poznámky…"></textarea>
+        <div class="row">
+          <button class="btn primary" id="stProjGo">🏗️ Vygenerovat projekt</button>
+          <a class="btn" id="stProjDl" download="projekt.html" hidden>⬇ Stáhnout .html</a>
+          <button class="btn" id="stProjGh">🐙 Nahraj na GitHub</button>
+        </div>
+        <p class="muted small" id="ghStatus"></p>
+        <iframe id="stProjPrev" class="html-prev" hidden sandbox="allow-scripts" title="Náhled projektu"></iframe>
+      </div>
+
+      <div class="card">
+        <h3>🎵 Hudba &amp; písničky</h3>
+        <p class="muted">Složí melodii, basu a bicí (syntezátor) a přehraje ji – stáhneš jako .wav. Text písně (lyrics) ti napíše AI v chatu.</p>
+        <textarea id="stMusicPrompt" rows="3" placeholder="Např.: smutný lo-fi beat 85 BPM, jemná melodie v moll…"></textarea>
+        <div class="row">
+          <button class="btn primary" id="stMusicGo">🎵 Vygenerovat skladbu</button>
+          <a class="btn" id="stMusicDl" download="skladba.wav" hidden>⬇ Stáhnout .wav</a>
+        </div>
+        <div id="stMusicWrap" hidden><audio id="stMusicPlayer" controls style="width:100%;margin-top:12px"></audio></div>
+      </div>
+
+      <div class="card">
+        <h3>🖼️ Obrázky</h3>
+        <p class="muted">Vygeneruj obrázek podle popisu. Umí to i přímo v chatu – napiš třeba „nakresli mi lišku astronauta".</p>
+        <textarea id="stImgPrompt" rows="3" placeholder="Popis obrázku (lépe anglicky): např. a fox astronaut on Mars, cinematic lighting…"></textarea>
+        <div class="row">
+          <button class="btn primary" id="stImgGo">🎨 Vygenerovat obrázek</button>
+          <a class="btn" id="stImgDl" download="obrazek.png" hidden>⬇ Stáhnout .png</a>
+        </div>
+        <img id="stImgResult" class="img-result" hidden alt="výsledek">
+      </div>
+
+      <div class="card">
+        <h3>📁 Soubory</h3>
+        <p class="muted">Soubory, které ti AI vytvoří (řekni jí „ulož mi soubor…"). Stáhni si je do telefonu.</p>
+        <div id="fileList"></div>
+        <div class="row"><button class="btn" id="btnZip">⬇ Stáhnout vše jako .zip</button></div>
+      </div>
+
+      <div class="card">
+        <h3>✨ AI video <span class="badge">experimentální</span></h3>
+        <p class="muted">Generování skutečného videa pomocí Google Veo podle popisu. Vyžaduje přístup k Veo na tvém klíči (může být placený režim) – jinak dej přednost videu z textu výše.</p>
+        <textarea id="stVeoPrompt" rows="3" placeholder="Popis videa: např. kamerový záběr na město v dešti, neonová světla, filmový vzhled…"></textarea>
+        <div class="row">
+          <select id="stVeoAspect">
+            <option value="16:9">16:9 (na šířku)</option>
+            <option value="9:16">9:16 (na výšku / mobil)</option>
+            <option value="1:1">1:1 (čtverec)</option>
+          </select>
+          <button class="btn primary" id="stVeoGo">✨ Vygenerovat</button>
+        </div>
+        <p class="muted small" id="stVeoStatus"></p>
+        <div id="stVeoWrap" hidden>
+          <video id="stVeoPlayer" controls playsinline></video>
+          <a class="btn" id="stVeoDl" download="ai-video.mp4">⬇ Stáhnout .mp4</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PLUGINS ================= -->
+    <section id="view-plugins" class="view hidden">
+      <div class="card">
+        <h3>✨ Přidat novou funkci</h3>
+        <p class="muted small">Popiš, co má appka nového umět – Dark AI to <b>sama naprogramuje</b> a ty ji jen schválíš. Např.: „překladač textů", „generátor QR kódů", „herní kvíz", „počítadlo kalorií", „kalendář úkolů"…</p>
+        <textarea id="plugPrompt" rows="3" placeholder="Popiš novou funkci…"></textarea>
+        <div class="row">
+          <button class="btn primary" id="plugGen">✨ Vygenerovat funkci</button>
+        </div>
+        <div id="plugPreview" hidden>
+          <h4 id="plugName"></h4>
+          <p class="muted small" id="plugDesc"></p>
+          <details><summary class="muted small">🔍 Zobrazit kód (projdi si ho)</summary><pre class="run-out" id="plugCode"></pre></details>
+          <div class="row">
+            <button class="btn primary" id="plugInstall">✅ Instalovat do appky</button>
+            <button class="btn" id="plugCancel">❌ Zahodit</button>
+          </div>
+        </div>
+        <p class="muted small" id="plugStatus"></p>
+      </div>
+      <div class="card">
+        <h3>🧩 Nainstalované funkce</h3>
+        <div id="pluginList"></div>
+        <p class="muted small">Změny se projeví po načtení appky. Při 🚀 Zveřejnit na hosting se pluginy nahrají s appkou – tvé funkce budou žít i tam.</p>
+        <button class="btn" id="plugReload">🔄 Aplikovat změny (znovu načíst)</button>
+      </div>
+      <div id="pluginCards"></div>
+    </section>
+
+    <!-- ================= PC ================= -->
+    <section id="view-pc" class="view hidden">
+      <div class="card">
+        <h3>🖥️ Počítač <span class="badge" id="pcStatus">kontroluji…</span></h3>
+        <p class="muted small">Automatizace počítače funguje, když appka běží přes <b>desktop aplikaci</b> (složka <code>moje-ai-desktop</code> → <code>SPUSTIT-WINDOWS.bat</code> / <code>spustit-mac-linux.sh</code>). Bez ní je tahle sekce offline – a to je správně.</p>
+      </div>
+      <div class="card">
+        <h3>⌨️ Terminál</h3>
+        <div class="row">
+          <input id="pcCmd" class="grow" placeholder="příkaz, např. ls -la, dir, ipconfig…">
+          <button class="btn primary" id="pcRun">▶️ Spustit</button>
+        </div>
+        <pre id="pcOut" class="run-out hidden"></pre>
+        <p class="muted small">⚠️ Každý příkaz – i od AI – potvrdíš ručně. Appka nikdy nic nespustí sama.</p>
+      </div>
+      <div class="card">
+        <h3>📂 Soubory &amp; screenshot</h3>
+        <div class="row">
+          <input id="pcPath" class="grow" placeholder="~">
+          <button class="btn" id="pcList">Načíst složku</button>
+          <button class="btn" id="pcShot">📷 Screenshot</button>
+        </div>
+        <div id="pcFiles"></div>
+        <img id="pcShotImg" class="img-result" hidden alt="screenshot">
+      </div>
+      <div class="card">
+        <h3>⏰ Naplánovaná automatizace</h3>
+        <div class="row">
+          <input id="taskName" class="grow" placeholder="Název (např. Ranní report)">
+          <select id="taskSpec">
+            <option value="daily">každý den v čase</option>
+            <option value="every">každých N minut</option>
+          </select>
+          <input id="taskTime" placeholder="08:00" style="width:110px">
+        </div>
+        <div class="row">
+          <input id="taskCmd" class="grow" placeholder="příkaz, který se má spustit…">
+          <button class="btn primary" id="taskAdd">＋ Přidat úkol</button>
+        </div>
+        <div id="taskList"></div>
+      </div>
+    </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section id="view-settings" class="view hidden">
+      <div class="card">
+        <h3>🧠 Mozek (AI model)</h3>
+        <label>Poskytovatel</label>
+        <select id="setProvider">
+          <option value="gemini">Google Gemini (zdarma – doporučuji)</option>
+          <option value="openai">OpenAI (ChatGPT – vlastní klíč)</option>
+        </select>
+        <label>API klíč <span class="muted small">ukládá se jen v tvém prohlížeči</span></label>
+        <div class="row">
+          <input type="password" id="setKey" placeholder="vlož svůj API klíč…">
+          <button class="btn" id="btnShowKey" type="button">👁</button>
+        </div>
+        <p class="muted small">Zdarma klíč: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → přihlas se Google účtem → „Create API key" → zkopíruj. Pro OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>.</p>
+        <label>Model chatu</label>
+        <input id="setModel" placeholder="gemini-3.8-flash">
+        <p class="muted small">Gemini: <code>gemini-3.8-flash</code> (aktuálně nejlepší), <code>gemini-3.5-flash-lite</code> (rychlý). OpenAI: <code>gpt-4o-mini</code>, <code>gpt-4o</code>…</p>
+        <label class="check"><input type="checkbox" id="setSearch"> 🌐 Při odpovídání prohledávat web (Google Search)</label>
+        <label>Model pro obrázky</label>
+        <input id="setImgModel" placeholder="gemini-3.1-flash-image">
+        <p class="muted small">Nano Banana: <code>gemini-3.1-flash-image</code> nebo <code>gemini-nano-banana-2.1</code>.</p>
+        <label class="check"><input type="checkbox" id="setSearchDDG"> 🔎 Hledat i v zákoutích internetu (DuckDuckGo, fóra, blogy)</label>
+        <label class="check"><input type="checkbox" id="setSearchSocial"> 📱 Prohledávat sociální sítě (Instagram, TikTok, YouTube, Reddit)</label>
+      </div>
+
+      <div class="card">
+        <h3>🎨 Vzhled &amp; jméno appky</h3>
+        <p class="muted small">Přizpůsob si appku přímo tady – bez programování a bez cizí pomoci. Změny se projeví hned a nahrají se i na hosting při 🚀 Zveřejnit.</p>
+        <label>Jméno appky</label>
+        <input id="setAppName" maxlength="24" placeholder="Dark AI">
+        <label>Barevné téma</label>
+        <div class="chips" id="themeChips">
+          <button class="chip theme" data-theme="darkred">🖤❤️ Dark AI</button>
+          <button class="chip theme" data-theme="matrix">💚 Matrix</button>
+          <button class="chip theme" data-theme="ice">🧊 Ice</button>
+          <button class="chip theme" data-theme="purple">🟣 Neon</button>
+          <button class="chip theme" data-theme="mono">⚪ Minimal</button>
+        </div>
+        <div class="row">
+          <div class="grow"><label>Barva akcentu</label><input type="color" id="setThemeAccent" value="#e50914"></div>
+          <div class="grow"><label>Barva přechodu</label><input type="color" id="setThemeAccent2" value="#ff2440"></div>
+          <div class="grow"><label>Pozadí</label><input type="color" id="setThemeBg" value="#0b0708"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🎭 Osobnost</h3>
+        <label>Jméno AI</label>
+        <input id="setName" maxlength="24" placeholder="Dark">
+        <label>Avatar</label>
+        <div class="avatar-picker" id="avatarPicker"></div>
+        <label>Styl / role</label>
+        <div class="chips" id="presetChips">
+          <button class="chip preset" data-preset="universal">🤖 Univerzální</button>
+          <button class="chip preset" data-preset="friend">😄 Kamarád</button>
+          <button class="chip preset" data-preset="coder">👨‍💻 Programátor</button>
+          <button class="chip preset" data-preset="teacher">🎓 Učitel</button>
+        </div>
+        <label class="check"><input type="checkbox" id="setOpenMode"> 🔓 Otevřený režim – přímé odpovědi bez kázání a zbytečných varování</label>
+        <label>Velikost včelího úlu (AI týmu)</label>
+        <select id="setHiveSize">
+          <option value="2">2 boti (rychlé, levné)</option>
+          <option value="4">4 boti (doporučeno)</option>
+          <option value="6">6 botů (důkladné, náročnější)</option>
+        </select>
+        <p class="muted small">Otevřený režim znamená: odpovídá věcně i na drsná či neobvyklá témata, nemoralizuje. Každý model má ale pořád tvrdé limity u nelegálních věcí (např. zneužívání dětí, terorismus) – ty žádná appka neodstraní.</p>
+        <label>Vlastní pokyny (co má AI umět, jak se chovat…)</label>
+        <textarea id="setExtra" rows="4" placeholder="Např.: Vždy odpovídej česky. Piš krátce. Zaměř se na tvorbu hudby a skriptů…"></textarea>
+      </div>
+
+      <div class="card">
+        <h3>🔊 Hlas</h3>
+        <label class="check"><input type="checkbox" id="setVoiceReplies"> Odpovídat hlasem (předčítat odpovědi)</label>
+        <label>Jazyk rozpoznání řeči (mikrofon)</label>
+        <select id="setRecLang">
+          <option value="cs-CZ">Čeština</option>
+          <option value="en-US">Angličtina</option>
+          <option value="sk-SK">Slovenština</option>
+          <option value="de-DE">Němčina</option>
+        </select>
+        <label>Hlas AI (dabing / předčítání)</label>
+        <select id="setTtsEngine">
+          <option value="auto">Automaticky (AI hlas, záloha prohlížeč)</option>
+          <option value="gemini">Jen AI hlas (Gemini TTS – hezčí, potřebuje klíč)</option>
+          <option value="browser">Jen hlas prohlížeče (zdarma, bez klíče)</option>
+        </select>
+        <div class="row">
+          <div class="grow"><label>Hlas</label><input id="setTtsVoice" placeholder="Puck"></div>
+          <div class="grow"><label>Jazyk hlasu</label><input id="setTtsLang" placeholder="cs-CZ"></div>
+        </div>
+        <p class="muted small">Hlasy Gemini: <code>Puck</code> (veselý), <code>Kore</code> (pevný), <code>Zephyr</code> (světlý), <code>Charon</code> (informativní), <code>Fenrir</code> (živý), <code>Leda</code> (mladistvý).</p>
+        <label>Model pro dabing (TTS)</label>
+        <input id="setTtsModel" placeholder="gemini-3.8-flash-tts">
+      </div>
+
+      <div class="card">
+        <h3>🧠 Paměť</h3>
+        <p class="muted small">Věci, které si má AI pamatovat mezi sezeními. Sama si sem ukládá důležité informace (když jí řekneš „zapamatuj si…"), můžeš je i upravit.</p>
+        <div id="memList"></div>
+        <div class="row">
+          <input id="memInput" class="grow" placeholder="Přidat do paměti…">
+          <button class="btn" id="memAdd">Přidat</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🔗 Propojení (integrace)</h3>
+        <p class="muted small">Napoj appku na GitHub – AI pak umí vytvářet repozitáře a nahrávat kód (tvoje projekty rovnou na GitHub, odkud jdou i zdarma hostovat přes GitHub Pages).</p>
+        <label>GitHub token <span class="muted small">ukládá se jen v tvém prohlížeči</span></label>
+        <div class="row">
+          <input type="password" id="setGithub" placeholder="ghp_… nebo github_pat_…">
+          <button class="btn" id="btnShowGh" type="button">👁</button>
+        </div>
+        <p class="muted small">Jak na token: <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">github.com/settings/tokens</a> → „Generate new token (classic)" → zaškrtni <code>repo</code> → zkopíruj. Účet na GitHubu je zdarma.</p>
+        <hr>
+        <h3>🚀 Zveřejnit appku na webu (hosting)</h3>
+        <p class="muted small">Jedním kliknutím nahraje appka <b>sama sebe</b> na GitHub a zapne GitHub Pages – zdarma, natrvalo, s vlastní adresou typu <code>tvujucet.github.io/dark-ai</code>. Repo bude veřejné (free tarif Pages to vyžaduje) – tvoje klíče, chaty ani paměť v něm nejsou, ty zůstávají v tvém prohlížeči.</p>
+        <ol class="muted small" style="margin:10px 0 12px 22px; line-height:2">
+          <li>Založ si účet zdarma: <a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a></li>
+          <li>Vytvoř token (přednastavený): <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Dark%20AI" target="_blank" rel="noopener">vytvořit token</a> → dole klikni „Generate token" → zkopíruj ho</li>
+          <li>Vlož token do pole <b>GitHub token</b> výše ☝️</li>
+          <li>Zmáčkni tlačítko dole – appka se zveřejní sama 🚀</li>
+        </ol>
+        <button class="btn primary" id="btnDeploy">🚀 Zveřejnit appku na webu</button>
+        <p class="muted small" id="deployStatus"></p>
+      </div>
+
+      <div class="card">
+        <h3>📱 Aplikace do telefonu</h3>
+        <p class="muted small">Dark AI jde nainstalovat do telefonu jako normální appka (bez obchodu):</p>
+        <ul class="muted small">
+          <li><b>Android (Chrome):</b> menu ⋮ → „Instalovat aplikaci" / „Přidat na plochu"</li>
+          <li><b>iPhone (Safari):</b> Sdílet 📤 → „Přidat na plochu"</li>
+        </ul>
+        <button class="btn primary" id="btnInstall">📲 Nainstalovat appku</button>
+        <hr>
+        <h3>💾 Data</h3>
+        <div class="row">
+          <button class="btn" id="btnExport">Exportovat data</button>
+          <button class="btn" id="btnImport">Importovat</button>
+          <button class="btn danger" id="btnWipe">Smazat vše</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="hidden"></div>
+<script src="theme.js"></script>
+<script src="plugins.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
