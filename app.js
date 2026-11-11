@@ -82,13 +82,49 @@ async function chatOnceWith(model, history, sys) {
   }
 }
 
+function menuFor(menu) {
+  $('#modeMenu').classList.add('hidden');
+  $('#modelMenu').classList.add('hidden');
+  if (menu) menu.classList.toggle('hidden');
+}
+
+function fillModels(container, current, onPick) {
+  container.innerHTML = '';
+  MODEL_OPTS.forEach((o) => {
+    const b = document.createElement('button');
+    b.className = 'model-opt' + (o[0] === current ? ' active' : '');
+    b.innerHTML = '<span>' + o[1] + '</span><span class="tick">' + (o[0] === current ? '✓' : '') + '</span>';
+    b.addEventListener('click', () => onPick(o[0]));
+    container.appendChild(b);
+  });
+}
+
 function syncModeUI() {
   const mode = (settings && settings.chatMode) || 'agent';
-  $$('#modeChips .mode-chip').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
-  const bs = $('#battleSel');
-  if (bs) bs.classList.toggle('hidden', mode !== 'battle');
-  const mp = $('#modelPicker');
-  if (mp && settings && settings.model && MODEL_OPTS.some((o) => o[0] === settings.model)) mp.value = settings.model;
+  const names = { battle: '⚔️ Battle', agent: '🤖 Agent', chat: '💬 Chat', team: '🐝 Tým' };
+  const bm = $('#btnMode');
+  if (bm) bm.textContent = (names[mode] || names.agent) + ' ▾';
+  $$('#modeMenu .mode-opt').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+  const pm = $('#btnModel');
+  if (pm && settings) pm.textContent = modelLabel(currentModel()) + ' ▾';
+  const oppHead = $('#oppHead'), oppList = $('#oppList');
+  if (oppHead) oppHead.classList.toggle('hidden', mode !== 'battle');
+  if (oppList) {
+    oppList.classList.toggle('hidden', mode !== 'battle');
+    fillModels(oppList, settings.battleModel, (m) => {
+      settings.battleModel = m; saveSettings(); syncModeUI(); menuFor(null);
+      toast('⚔️ Soupeř: ' + modelLabel(m));
+    });
+  }
+  const ml = $('#modelList');
+  if (ml) fillModels(ml, currentModel(), (m) => {
+    settings.model = m;
+    settings.provider = /^gpt/i.test(m) ? 'openai' : 'gemini';
+    saveSettings();
+    const me = $('#setModel'); if (me) me.value = m;
+    syncModeUI(); menuFor(null);
+    toast('🧠 Model: ' + modelLabel(m));
+  });
 }
 
 /* ---------- motiv / vzhled (editor v appce) ---------- */
@@ -2238,27 +2274,29 @@ function initChrome() {
     if (!p.classList.contains('hidden') && !p.contains(e.target) && e.target.id !== 'btnChats') hideChatPanel();
   });
 
-  $$('#modeChips .mode-chip').forEach((b) => b.addEventListener('click', () => {
+  $('#btnMode').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const m = $('#modeMenu');
+    menuFor(m.classList.contains('hidden') ? m : null);
+  });
+  $('#btnModel').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const m = $('#modelMenu');
+    menuFor(m.classList.contains('hidden') ? m : null);
+    syncModeUI();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.pop-menu') && e.target.id !== 'btnMode' && e.target.id !== 'btnModel') menuFor(null);
+  });
+  $$('#modeMenu .mode-opt').forEach((b) => b.addEventListener('click', () => {
     settings.chatMode = b.dataset.mode;
     saveSettings();
     syncModeUI();
+    menuFor(null);
     if (b.dataset.mode === 'battle') toast('⚔️ Battle: pošli zprávu a dva AI modely se utkají!');
     if (b.dataset.mode === 'team') toast('🐝 Tým: pošli zprávu a rozešle ji více AI naráz!');
     $('#input').focus();
   }));
-  const mp = $('#modelPicker');
-  mp.innerHTML = MODEL_OPTS.map((o) => '<option value="' + o[0] + '">' + o[1] + '</option>').join('');
-  mp.addEventListener('change', () => {
-    settings.model = mp.value;
-    settings.provider = /^gpt/i.test(mp.value) ? 'openai' : 'gemini';
-    saveSettings();
-    const me = $('#setModel'); if (me) me.value = mp.value;
-    toast('🧠 Model: ' + modelLabel(mp.value));
-  });
-  const bs = $('#battleSel');
-  bs.innerHTML = MODEL_OPTS.map((o) => '<option value="' + o[0] + '">' + o[1] + '</option>').join('');
-  bs.value = settings.battleModel || 'gemini-3.5-flash-lite';
-  bs.addEventListener('change', () => { settings.battleModel = bs.value; saveSettings(); });
   syncModeUI();
 
   $('#btnNewChat').addEventListener('click', () => {
