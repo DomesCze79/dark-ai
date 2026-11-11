@@ -73,6 +73,18 @@
           <p class="hint" id="keyHint"></p>
         </div>
       </div>
+      <div id="modeBar">
+        <div class="mode-chips" id="modeChips">
+          <button class="mode-chip" data-mode="chat">💬 Chat</button>
+          <button class="mode-chip active" data-mode="agent">🤖 Agent</button>
+          <button class="mode-chip" data-mode="battle">⚔️ Battle</button>
+          <button class="mode-chip" data-mode="team">🐝 Tým</button>
+        </div>
+        <div class="mode-sel">
+          <select id="modelPicker" title="AI model"></select>
+          <select id="battleSel" class="hidden" title="Soupeř do battle"></select>
+        </div>
+      </div>
       <div id="composer">
         <div id="recBar" class="hidden"><span class="rec-dot"></span><span id="recText">Poslouchám…</span><button id="recStop" class="icon-btn small">✕</button></div>
         <div id="attachPreview" class="hidden"></div>
