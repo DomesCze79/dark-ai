@@ -2199,6 +2199,10 @@ function initChrome() {
     hideChatPanel();
     $('#btnNewChat').click();
   });
+  $('#btnNewChatTop').addEventListener('click', () => {
+    hideChatPanel();
+    $('#btnNewChat').click();
+  });
   document.addEventListener('click', (e) => {
     const p = $('#chatPanel');
     if (!p.classList.contains('hidden') && !p.contains(e.target) && e.target.id !== 'btnChats') hideChatPanel();
