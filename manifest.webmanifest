@@ -1,0 +1,26 @@
+{
+  "name": "Dark AI – tvoje vlastní AI",
+  "short_name": "Dark AI",
+  "description": "Vlastní AI asistent: chat, hlas, kód, dabing, videa a hledání na webu.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0708",
+  "theme_color": "#140b0c",
+  "lang": "cs",
+  "icons": [
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
