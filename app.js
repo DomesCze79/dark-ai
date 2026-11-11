@@ -103,11 +103,12 @@ function fillModels(container, current, onPick) {
 function syncModeUI() {
   const mode = (settings && settings.chatMode) || 'agent';
   const names = { battle: '⚔️ Battle', agent: '🤖 Agent', chat: '💬 Chat', team: '🐝 Tým' };
+  const icos = { battle: '⚔️', agent: '🤖', chat: '💬', team: '🐝' };
   const bm = $('#btnMode');
-  if (bm) bm.innerHTML = (names[mode] || names.agent) + ' <small>▾</small>';
+  if (bm) bm.innerHTML = (icos[mode] || icos.agent) + ' <small>▾</small>';
   $$('#modeMenu .mode-opt').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
   const pm = $('#btnModel');
-  if (pm && settings) pm.innerHTML = '⚡ ' + esc(modelLabel(currentModel())) + ' <small>▾</small>';
+  if (pm && settings) pm.innerHTML = '⚡ <small>▾</small>';
   const ss = $('#toolSearchState'); if (ss && settings) ss.textContent = settings.search ? 'zapnuto' : 'vypnuto';
   const vs = $('#toolVoiceState'); if (vs && settings) vs.textContent = settings.voiceReplies ? 'zapnuto' : 'vypnuto';
   const oppHead = $('#oppHead'), oppList = $('#oppList');
@@ -2274,6 +2275,11 @@ function initChrome() {
   $$('.nav-btn').forEach((b) => b.addEventListener('click', () => switchView(b.dataset.view)));
 
   $('#btnChats').addEventListener('click', (e) => {
+    e.stopPropagation();
+    renderChatList();
+    $('#chatPanel').classList.toggle('hidden');
+  });
+  $('#titleArea').addEventListener('click', (e) => {
     e.stopPropagation();
     renderChatList();
     $('#chatPanel').classList.toggle('hidden');
