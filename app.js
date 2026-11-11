@@ -29,9 +29,9 @@ const DEF_SETTINGS = {
   provider: 'gemini', apiKey: '', model: 'gemini-3.8-flash',
   search: true,
   name: 'Dark', avatar: '🤖', preset: 'universal', openMode: true, extra: '',
-  appName: 'Dark AI', themePreset: 'darkred',
-  themeAccent: '#e50914', themeAccent2: '#ff2440', themeBg: '#0b0708',
-  themeGrad: 'linear-gradient(135deg, #e50914, #6b0f18)',
+  appName: 'Dark AI', themePreset: 'mono',
+  themeAccent: '#b9b9c4', themeAccent2: '#8f8f9a', themeBg: '#0c0c0e',
+  themeGrad: 'linear-gradient(135deg, #6a6a74, #3a3a42)',
   voiceReplies: true, recLang: 'cs-CZ',
   ttsEngine: 'auto', ttsVoice: 'Puck', ttsLang: 'cs-CZ', ttsModel: 'gemini-3.8-flash-tts',
   imgModel: 'gemini-3.1-flash-image',
@@ -45,6 +45,18 @@ let settings, chats, memory, currentChatId;
 
 function loadState() {
   settings = Object.assign({}, DEF_SETTINGS, loadJSON('mai.settings', {}));
+  if (!settings.themeMigrated) {
+    settings.themeMigrated = true;
+    if (!settings.themePreset || settings.themePreset === 'darkred') {
+      const g = THEMES.mono;
+      settings.themePreset = 'mono';
+      settings.themeAccent = g.accent;
+      settings.themeAccent2 = g.accent2;
+      settings.themeGrad = g.grad;
+      settings.themeBg = g.bg;
+    }
+    saveSettings();
+  }
   chats = loadJSON('mai.chats', []);
   memory = loadJSON('mai.memory', []);
   currentChatId = loadJSON('mai.current', null);
@@ -137,7 +149,7 @@ const THEMES = {
   matrix: { label: '💚 Matrix', appName: 'Dark AI', accent: '#00e676', accent2: '#00ff9d', grad: 'linear-gradient(135deg, #00c853, #003d1f)', bg: '#070b08', bg2: '#0c1410' },
   ice: { label: '🧊 Ice', appName: 'Dark AI', accent: '#2f9bff', accent2: '#7fd0ff', grad: 'linear-gradient(135deg, #1e88e5, #062a4a)', bg: '#070a10', bg2: '#0b1220' },
   purple: { label: '🟣 Neon', appName: 'Dark AI', accent: '#b14aff', accent2: '#e05cff', grad: 'linear-gradient(135deg, #8e24aa, #3b0d52)', bg: '#0a0710', bg2: '#130b1c' },
-  mono: { label: '⚪ Minimal', appName: 'Dark AI', accent: '#e0e0e0', accent2: '#9e9e9e', grad: 'linear-gradient(135deg, #e0e0e0, #4a4a4a)', bg: '#0c0c0c', bg2: '#151515' }
+  mono: { label: '🩶 Černosedivá', appName: 'Dark AI', accent: '#b9b9c4', accent2: '#8f8f9a', grad: 'linear-gradient(135deg, #6a6a74, #3a3a42)', bg: '#0c0c0e', bg2: '#151517' }
 };
 
 function shade(hex, amt) {
@@ -151,9 +163,9 @@ function shade(hex, amt) {
 
 function applyTheme() {
   const r = document.documentElement.style;
-  const accent = settings.themeAccent || '#e50914';
-  const accent2 = settings.themeAccent2 || '#ff2440';
-  const bg = settings.themeBg || '#0b0708';
+  const accent = settings.themeAccent || '#b9b9c4';
+  const accent2 = settings.themeAccent2 || '#8f8f9a';
+  const bg = settings.themeBg || '#0c0c0e';
   r.setProperty('--accent', accent);
   r.setProperty('--accent2', accent2);
   r.setProperty('--grad', settings.themeGrad || ('linear-gradient(135deg, ' + accent + ', ' + shade(accent, -60) + ')'));
@@ -174,11 +186,11 @@ function fillThemeInputs() {
 function buildThemeJs() {
   const t = {
     appName: settings.appName || 'Dark AI',
-    accent: settings.themeAccent || '#e50914',
-    accent2: settings.themeAccent2 || '#ff2440',
-    grad: settings.themeGrad || ('linear-gradient(135deg, ' + (settings.themeAccent || '#e50914') + ', #6b0f18)'),
-    bg: settings.themeBg || '#0b0708',
-    bg2: '#140b0c'
+    accent: settings.themeAccent || '#b9b9c4',
+    accent2: settings.themeAccent2 || '#8f8f9a',
+    grad: settings.themeGrad || ('linear-gradient(135deg, ' + (settings.themeAccent || '#b9b9c4') + ', #3a3a42)'),
+    bg: settings.themeBg || '#0c0c0e',
+    bg2: '#151517'
   };
   return '/* Dark AI – motiv (z Nastavení → Vzhled) */\n' +
     'window.DARK_AI_THEME = ' + JSON.stringify(t) + ';\n' +
@@ -1902,13 +1914,13 @@ async function makeKineticVideo(text, audioBlob) {
     if (cur.trim()) lines.push(cur.trim());
     const startY = H / 2 - (lines.length - 1) * fs * 0.72;
     lines.forEach((ln, i) => {
-      ctx.fillStyle = i === lines.length - 1 ? '#ffd9d9' : 'rgba(255,238,238,0.88)';
+      ctx.fillStyle = i === lines.length - 1 ? '#e8e8ec' : 'rgba(232,232,236,0.88)';
       ctx.fillText(ln, W / 2, startY + i * fs * 1.45);
     });
 
     ctx.fillStyle = 'rgba(255,255,255,0.16)';
     ctx.fillRect(W * 0.2, H - 74, W * 0.6, 8);
-    ctx.fillStyle = '#e50914';
+    ctx.fillStyle = '#9a9aa6';
     ctx.fillRect(W * 0.2, H - 74, W * 0.6 * Math.min(1, p), 8);
     ctx.font = '500 22px -apple-system, "Segoe UI", sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
