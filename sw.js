@@ -1,5 +1,5 @@
 /* Dark AI – service worker (offline app shell) */
-const CACHE = 'dark-ai-v10';
+const CACHE = 'dark-ai-v11';
 const ASSETS = [
   './',
   './index.html',
