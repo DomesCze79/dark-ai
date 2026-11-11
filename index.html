@@ -40,14 +40,14 @@
       <button id="btnMenu" class="icon-btn" aria-label="Menu">☰</button>
       <button id="btnChats" class="icon-btn" title="Přepnout chat">💬</button>
       <button id="btnNewChatTop" class="icon-btn" title="Nový chat">＋</button>
-      <div class="title">
+      <div class="title" id="titleArea" title="Přepnout chat">
         <span id="topAvatar" class="avatar">🤖</span>
-        <div><b id="topName">Dark</b><small id="topStatus">připraven/a</small></div>
+        <div class="title-txt"><b id="topName">Dark</b><small id="topStatus">připraven/a</small></div>
+        <span class="title-caret">▾</span>
       </div>
       <div class="top-actions">
         <button id="btnSearch" class="icon-btn on" title="Hledání na webu">🌐</button>
         <button id="btnVoice" class="icon-btn on" title="Hlasové odpovědi">🔊</button>
-        <button id="btnMic" class="icon-btn" title="Mluvit místo psaní">🎙️</button>
         <button id="btnCall" class="icon-btn" title="Hovor – mluv a poslouchej">📞</button>
       </div>
     </header>
@@ -74,8 +74,6 @@
           <p class="hint" id="keyHint"></p>
         </div>
       </div>
-      <div id="chatStrip"></div>
-
       <div id="composer">
         <div id="recBar" class="hidden"><span class="rec-dot"></span><span id="recText">Poslouchám…</span><button id="recStop" class="icon-btn small">✕</button></div>
         <div id="attachPreview" class="hidden"></div>
@@ -83,9 +81,10 @@
           <textarea id="input" rows="1" placeholder="Napiš zprávu, nebo zmáčkni 🎙️ a mluv…"></textarea>
           <div class="composer-row">
             <button id="btnTools" class="tool-btn" title="Nástroje">⊞</button>
-            <button id="btnMode" class="tool-btn" title="Režim">🤖 Agent <small>▾</small></button>
+            <button id="btnMode" class="tool-btn" title="Režim">🤖 <small>▾</small></button>
             <button id="btnModel" class="tool-btn" title="AI model">⚡ <small>▾</small></button>
             <span class="tool-spacer"></span>
+            <button id="btnMic" class="icon-btn small" title="Mluvit místo psaní">🎙️</button>
             <button id="btnAttach" class="icon-btn small" title="Přiložit obrázek – AI ho přečte">📎</button>
             <input type="file" id="attachInput" accept="image/*" hidden>
             <button id="btnSend" class="icon-btn send" aria-label="Odeslat">➤</button>
