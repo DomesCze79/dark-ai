@@ -1383,27 +1383,42 @@ function getChat(create) {
   return c;
 }
 
-function renderChatList() {
-  const list = $('#chatList');
+function fillChatList(list) {
+  if (!list) return;
   list.innerHTML = '';
   for (const c of chats) {
     const el = document.createElement('div');
     el.className = 'chat-item' + (c.id === currentChatId ? ' active' : '');
-    el.innerHTML = `<span>${esc(c.title)}</span><button class="del" title="Smazat">✕</button>`;
+    el.innerHTML = `<span>${esc(c.title)}</span><button class="ren" title="Přejmenovat">✎</button><button class="del" title="Smazat">✕</button>`;
     el.addEventListener('click', (e) => {
       if (e.target.classList.contains('del')) {
+        if (!confirm('Opravdu smazat chat „' + c.title + '“?')) return;
         chats = chats.filter((x) => x.id !== c.id);
         if (currentChatId === c.id) currentChatId = chats[0] ? chats[0].id : null;
         saveChats(); renderChatList(); renderMessages();
         return;
       }
+      if (e.target.classList.contains('ren')) {
+        const t = prompt('Nový název chatu:', c.title);
+        if (t && t.trim()) { c.title = t.trim().slice(0, 40); saveChats(); renderChatList(); }
+        return;
+      }
       currentChatId = c.id;
       saveChats(); renderChatList(); renderMessages();
       closeDrawer();
+      hideChatPanel();
+      switchView('chat');
     });
     list.appendChild(el);
   }
 }
+
+function renderChatList() {
+  fillChatList($('#chatList'));
+  fillChatList($('#chatPanelList'));
+}
+
+function hideChatPanel() { $('#chatPanel').classList.add('hidden'); }
 
 function scrollBottom() {
   const m = $('#messages');
@@ -2052,6 +2067,7 @@ function switchView(name) {
   $('#view-' + name).classList.remove('hidden');
   $$('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
   closeDrawer();
+  hideChatPanel();
   if (name === 'chat') scrollBottom();
 }
 function closeDrawer() {
@@ -2066,6 +2082,20 @@ function initChrome() {
   });
   $('#overlay').addEventListener('click', closeDrawer);
   $$('.nav-btn').forEach((b) => b.addEventListener('click', () => switchView(b.dataset.view)));
+
+  $('#btnChats').addEventListener('click', (e) => {
+    e.stopPropagation();
+    renderChatList();
+    $('#chatPanel').classList.toggle('hidden');
+  });
+  $('#btnNewChat2').addEventListener('click', () => {
+    hideChatPanel();
+    $('#btnNewChat').click();
+  });
+  document.addEventListener('click', (e) => {
+    const p = $('#chatPanel');
+    if (!p.classList.contains('hidden') && !p.contains(e.target) && e.target.id !== 'btnChats') hideChatPanel();
+  });
 
   $('#btnNewChat').addEventListener('click', () => {
     currentChatId = null;
