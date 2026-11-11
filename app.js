@@ -1796,6 +1796,19 @@ async function send(text) {
     const msg = e.message || String(e);
     const quota = /quota|429|rate|RESOURCE_EXHAUSTED|exceeded/i.test(msg);
     let done = false;
+    if (!done && /unavailable for free|model not found|no endpoints|does not exist/i.test(msg) && providerForModel(settings.model || '') === 'openrouter') {
+      settings.model = 'openrouter/free';
+      saveSettings(); syncModeUI();
+      try {
+        const hist2 = chat.messages.slice(-30).map((m) => ({ role: m.role, content: m.content, image: m.image, mime: m.mime }));
+        const r2 = await chatOnce(hist2, buildSystem());
+        const content2 = ((r2.text || '').trim()) || '(model nevrátil odpověď)';
+        chat.messages.push({ role: 'assistant', content: content2 });
+        saveChats();
+        bubble.innerHTML = '<div class="mem-chip">🆓 Model zdarma skončil – přepnul jsem na Router zdarma</div>' + renderMd(content2);
+        done = true;
+      } catch (e2) { /* zkusí se spodní hláška */ }
+    }
     if (quota && /3\.8/.test(settings.model || '')) {
       settings.model = 'gemini-3.5-flash-lite';
       saveSettings(); syncModeUI();
