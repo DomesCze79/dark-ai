@@ -1449,6 +1449,36 @@ function fillChatList(list) {
 function renderChatList() {
   fillChatList($('#chatList'));
   fillChatList($('#chatPanelList'));
+  renderChatStrip();
+}
+
+function renderChatStrip() {
+  const s = $('#chatStrip');
+  if (!s) return;
+  s.innerHTML = '';
+  const add = document.createElement('button');
+  add.className = 'strip-chip add';
+  add.textContent = '＋ Nový chat';
+  add.addEventListener('click', () => {
+    hideChatPanel();
+    $('#btnNewChat').click();
+  });
+  s.appendChild(add);
+  for (const c of chats) {
+    const el = document.createElement('button');
+    el.className = 'strip-chip' + (c.id === currentChatId ? ' active' : '');
+    el.textContent = c.title;
+    el.title = c.title;
+    el.addEventListener('click', () => {
+      if (c.id === currentChatId) return;
+      currentChatId = c.id;
+      saveChats(); renderChatList(); renderMessages();
+      switchView('chat');
+    });
+    s.appendChild(el);
+  }
+  const act = s.querySelector('.strip-chip.active');
+  if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
 function hideChatPanel() { $('#chatPanel').classList.add('hidden'); }
