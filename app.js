@@ -26,7 +26,7 @@ function saveJSON(key, val) {
 
 /* ---------- state ---------- */
 const DEF_SETTINGS = {
-  provider: 'gemini', apiKey: '', model: 'gemini-3.5-flash-lite',
+  provider: 'gemini', apiKey: '', orKey: '', model: 'gemini-3.5-flash-lite',
   search: true,
   name: 'Dark', avatar: '🤖', preset: 'universal', openMode: true, extra: '',
   appName: 'Dark AI', themePreset: 'mono',
@@ -68,12 +68,35 @@ function saveMemory() { saveJSON('mai.memory', memory); }
 function currentModel() {
   const m = (settings.model || '').trim();
   if (m) return m;
-  return settings.provider === 'openai' ? 'gpt-4o-mini' : 'gemini-3.5-flash-lite';
+  if (settings.provider === 'openai') return 'gpt-4o-mini';
+  if (settings.provider === 'openrouter') return 'meta-llama/llama-3.3-70b-instruct:free';
+  return 'gemini-3.5-flash-lite';
+}
+
+function providerForModel(m) {
+  m = (m || '').trim();
+  if (/^gpt/i.test(m)) return 'openai';
+  if (m.indexOf('/') >= 0) return 'openrouter';
+  return 'gemini';
+}
+
+function keyFor(provider) {
+  if (provider === 'openrouter') return (settings.orKey || '').trim();
+  return (settings.apiKey || '').trim();
+}
+
+function openaiChatUrl(provider) {
+  return provider === 'openrouter'
+    ? 'https://openrouter.ai/api/v1/chat/completions'
+    : 'https://api.openai.com/v1/chat/completions';
 }
 
 const MODEL_OPTS = [
-  ['gemini-3.8-flash', '⚡ Gemini 3.8 Flash'],
   ['gemini-3.5-flash-lite', '💨 Gemini 3.5 Lite'],
+  ['gemini-3.8-flash', '⚡ Gemini 3.8 Flash'],
+  ['meta-llama/llama-3.3-70b-instruct:free', '🦙 Llama 3.3 70B (zdarma)'],
+  ['deepseek/deepseek-chat:free', '🐋 DeepSeek (zdarma)'],
+  ['google/gemma-3-27b-it:free', '💎 Gemma 27B (zdarma)'],
   ['gpt-4o-mini', '🟣 GPT-4o mini'],
   ['gpt-4o', '🔮 GPT-4o']
 ];
@@ -87,7 +110,7 @@ async function chatOnceWith(model, history, sys) {
   const prevM = settings.model, prevP = settings.provider;
   try {
     settings.model = model;
-    settings.provider = /^gpt/i.test(model) ? 'openai' : 'gemini';
+    settings.provider = providerForModel(model);
     return await chatOnce(history, sys);
   } finally {
     settings.model = prevM; settings.provider = prevP;
@@ -569,9 +592,9 @@ async function geminiGenerate(history, sys) {
 }
 
 async function openaiStream(history, sys, onDelta) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(openaiChatUrl(settings.provider), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.apiKey.trim() },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyFor(settings.provider) },
     body: JSON.stringify({
       model: currentModel(),
       stream: true,
@@ -1085,10 +1108,10 @@ async function detectPC() {
 }
 
 async function chatOnce(history, sys) {
-  if (settings.provider === 'openai') {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  if (settings.provider !== 'gemini') {
+    const res = await fetch(openaiChatUrl(settings.provider), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.apiKey.trim() },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyFor(settings.provider) },
       body: JSON.stringify({
         model: currentModel(),
         messages: [{ role: 'system', content: sys }].concat(history.map((m) => ({ role: m.role, content: m.content })))
@@ -1611,8 +1634,9 @@ async function send(text) {
   text = (text || '').trim();
   if (!text || sending) return;
   if ((settings.chatMode || 'agent') === 'team') { return sendTeam(text); }
-  if (!settings.apiKey.trim()) {
-    toast('Nejdřív přidej API klíč (Nastavení → Mozek 🧠) – zdarma na aistudio.google.com/apikey', 6000);
+  if (!keyFor(settings.provider || 'gemini').trim()) {
+    const where = settings.provider === 'openrouter' ? 'OpenRouter klíč (openrouter.ai/keys)' : 'API klíč (aistudio.google.com/apikey)';
+    toast('Nejdřív přidej ' + where + ' v Nastavení → Mozek 🧠', 6000);
     switchView('settings');
     return;
   }
@@ -1684,7 +1708,7 @@ async function send(text) {
         bubble.innerHTML = renderMd(stripActions(t)) + '<span class="cursor"></span>';
         scrollBottom();
       };
-      if (settings.provider === 'openai') {
+      if (settings.provider !== 'gemini') {
         result = await openaiStream(history, sys, onDelta);
       } else {
         try {
@@ -1777,7 +1801,7 @@ async function send(text) {
 async function sendTeam(text) {
   text = (text || '').trim();
   if (!text || sending) return;
-  if (!settings.apiKey.trim()) {
+  if (!keyFor(settings.provider || 'gemini').trim()) {
     toast('Nejdřív přidej API klíč (Nastavení → Mozek 🧠).');
     switchView('settings');
     return;
@@ -2106,6 +2130,7 @@ function renderMemory() {
 function initSettings() {
   // textová pole
   bindText('#setKey', 'apiKey');
+  bindText('#setOrKey', 'orKey');
   bindText('#setName', 'name');
   bindText('#setExtra', 'extra');
   bindText('#setTtsVoice', 'ttsVoice');
@@ -2133,8 +2158,9 @@ function initSettings() {
   provEl.addEventListener('change', () => {
     settings.provider = provEl.value;
     const m = settings.model || '';
-    if (settings.provider === 'openai' && (!m || /gemini|veo/i.test(m))) settings.model = 'gpt-4o-mini';
-    if (settings.provider === 'gemini' && (!m || /^gpt/i.test(m))) settings.model = 'gemini-3.5-flash-lite';
+    if (settings.provider === 'openai' && (!m || providerForModel(m) !== 'openai')) settings.model = 'gpt-4o-mini';
+    if (settings.provider === 'gemini' && (!m || providerForModel(m) !== 'gemini')) settings.model = 'gemini-3.5-flash-lite';
+    if (settings.provider === 'openrouter' && (!m || providerForModel(m) !== 'openrouter')) settings.model = 'meta-llama/llama-3.3-70b-instruct:free';
     modelEl.value = settings.model;
     saveSettings();
     syncHeader();
@@ -2159,6 +2185,10 @@ function initSettings() {
   });
   $('#btnShowGh').addEventListener('click', () => {
     const k = $('#setGithub');
+    k.type = k.type === 'password' ? 'text' : 'password';
+  });
+  $('#btnShowOrKey').addEventListener('click', () => {
+    const k = $('#setOrKey');
     k.type = k.type === 'password' ? 'text' : 'password';
   });
 
