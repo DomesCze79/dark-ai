@@ -355,3 +355,35 @@ audio { filter: invert(0.92) hue-rotate(180deg); }
 }
 .strip-chip.active { background: #55555e; color: #fff; border-color: #6a6a74; }
 .strip-chip.add { background: #2e2e34; font-weight: 700; }
+
+/* ===== v7: Arena-styl spodku – jedno tlačítko → menu 4 funkcí (Battle vlevo) ===== */
+#modeBar { position: relative; padding: 6px 12px 8px; background: #17171a; border-top: 1px solid #2c2c31; }
+.mode-row { display: flex; gap: 7px; }
+.mode-pill {
+  padding: 8px 14px; border-radius: 999px; border: 1px solid #3a3a40;
+  background: #232327; color: #d6d6dc; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+}
+.mode-pill:hover { background: #2c2c31; }
+.pop-menu {
+  position: absolute; left: 10px; right: 10px; bottom: calc(100% + 6px);
+  background: #1c1c20; border: 1px solid #34343a; border-radius: 14px;
+  padding: 10px; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); z-index: 40;
+  max-height: 52vh; overflow-y: auto;
+}
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.mode-opt {
+  padding: 11px 12px; border-radius: 11px; border: 1px solid #3a3a40;
+  background: #232327; color: #d6d6dc; cursor: pointer; text-align: left;
+}
+.mode-opt b { display: block; font-size: 13px; }
+.mode-opt small { color: #9a9aa2; font-size: 10.5px; }
+.mode-opt.active { background: #55555e; border-color: #6a6a74; color: #fff; }
+.pop-head { font-size: 11px; color: #9a9aa2; text-transform: uppercase; letter-spacing: 1px; margin: 8px 4px 5px; }
+.model-opt {
+  display: flex; justify-content: space-between; align-items: center; width: 100%;
+  padding: 9px 12px; border-radius: 10px; border: 1px solid transparent;
+  background: none; color: #d6d6dc; font-size: 12.5px; cursor: pointer; text-align: left;
+}
+.model-opt:hover { background: #26262b; }
+.model-opt.active { background: #33333a; border-color: #45454d; }
+.model-opt .tick { color: #9a9aa2; }
