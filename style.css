@@ -302,3 +302,42 @@ audio { filter: invert(0.92) hue-rotate(180deg); }
   #chatPanel { top: 62px; }
   .top-actions { gap: 7px; }
 }
+
+/* ===== v5: Arena-styl – módová lišta, výběr modelů, battle, tým (šedé UI) ===== */
+#modeBar {
+  display: flex; flex-direction: column; gap: 7px;
+  padding: 8px 12px 8px; background: #17171a; border-top: 1px solid #2c2c31;
+}
+.mode-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.mode-chips::-webkit-scrollbar { display: none; }
+.mode-chip {
+  flex-shrink: 0; padding: 7px 13px; border-radius: 999px; border: 1px solid #3a3a40;
+  background: #232327; color: #c9c9d1; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+  transition: background .15s;
+}
+.mode-chip.active { background: #55555e; color: #fff; border-color: #6a6a74; }
+.mode-sel { display: flex; gap: 7px; }
+#modelPicker, #battleSel {
+  flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid #3a3a40; background: #232327; color: #d6d6dc; font-size: 12.5px;
+}
+#battleSel { flex: 0 1 46%; }
+.battle-grid { display: flex; gap: 10px; margin-top: 10px; }
+.battle-col {
+  flex: 1; min-width: 0; background: #1d1d21; border: 1px solid #34343a;
+  border-radius: 12px; padding: 10px 12px; font-size: 13px;
+}
+.battle-col b { display: block; margin-bottom: 6px; font-size: 12px; color: #a9a9b2; }
+.btl { font-size: 13px; line-height: 1.55; }
+.battle-vote { display: flex; gap: 8px; margin-top: 10px; }
+.battle-vote .btn { background: #2c2c31; border: 1px solid #47474e; color: #e6e6ec; }
+.battle-vote .btn:hover { background: #3a3a41; }
+/* šedé nové prvky místo červené */
+#tabbar { background: #17171a; border-top: 1px solid #2c2c31; }
+#tabbar .nav-btn.active { background: #55555e; color: #fff; box-shadow: none; }
+#chatPanel { background: #1c1c20; border-color: #2e2e34; }
+#chatPanel .chat-item.active, #chatList .chat-item.active {
+  background: #33333a; border-color: #45454d;
+}
+#chatPanel .btn.primary { background: #3a3a41; border: 1px solid #4c4c55; box-shadow: none; color: #fff; }
+#chatPanel .btn.primary:hover { background: #4a4a52; }
