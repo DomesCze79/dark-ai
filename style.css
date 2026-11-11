@@ -423,3 +423,24 @@ audio { filter: invert(0.92) hue-rotate(180deg); }
 .mode-opt b, .tool-opt b { display: block; font-size: 14px; font-weight: 600; }
 .mode-opt small, .tool-opt small { color: #9a9aa2; font-size: 11.5px; }
 .tool-ico { font-size: 19px; width: 26px; text-align: center; flex-shrink: 0; }
+
+/* ===== v9: Arena kompakt – uvolnit obrazovku, ikonky místo popisků ===== */
+#btnSearch, #btnVoice, #btnNewChatTop, #chatStrip { display: none !important; }
+#topbar { padding: 8px 12px; gap: 8px; }
+#topbar .icon-btn { width: 36px; height: 36px; font-size: 15px; border-radius: 11px; }
+#titleArea { cursor: pointer; overflow: hidden; gap: 8px; }
+#titleArea .title-txt { overflow: hidden; min-width: 0; }
+#titleArea .title-txt b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+#titleArea .title-txt small { display: block; font-size: 10px; }
+.title-caret { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+#topAvatar { width: 30px; height: 30px; font-size: 15px; flex-shrink: 0; }
+#composer { padding: 6px 10px calc(8px + env(safe-area-inset-bottom)); }
+.composer-box { padding: 4px 8px 6px; }
+#input { padding: 8px 8px 4px; font-size: 14.5px; }
+.tool-btn { padding: 6px 9px; font-size: 12px; }
+.icon-btn.small { width: 32px; height: 32px; font-size: 14px; }
+#tabbar { padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+#tabbar .nav-btn { padding: 4px 2px 3px; font-size: 9.5px; gap: 1px; }
+@media (max-width: 900px) {
+  main { padding-bottom: calc(46px + env(safe-area-inset-bottom)); }
+}
