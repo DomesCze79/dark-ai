@@ -75,34 +75,40 @@
         </div>
       </div>
       <div id="chatStrip"></div>
-      <div id="modeBar">
-        <div class="mode-row">
-          <button id="btnMode" class="mode-pill">🤖 Agent ▾</button>
-          <button id="btnModel" class="mode-pill">⚡ Gemini 3.8 Flash ▾</button>
+
+      <div id="composer">
+        <div id="recBar" class="hidden"><span class="rec-dot"></span><span id="recText">Poslouchám…</span><button id="recStop" class="icon-btn small">✕</button></div>
+        <div id="attachPreview" class="hidden"></div>
+        <div class="composer-box">
+          <textarea id="input" rows="1" placeholder="Napiš zprávu, nebo zmáčkni 🎙️ a mluv…"></textarea>
+          <div class="composer-row">
+            <button id="btnTools" class="tool-btn" title="Nástroje">⊞</button>
+            <button id="btnMode" class="tool-btn" title="Režim">🤖 Agent <small>▾</small></button>
+            <button id="btnModel" class="tool-btn" title="AI model">⚡ <small>▾</small></button>
+            <span class="tool-spacer"></span>
+            <button id="btnAttach" class="icon-btn small" title="Přiložit obrázek – AI ho přečte">📎</button>
+            <input type="file" id="attachInput" accept="image/*" hidden>
+            <button id="btnSend" class="icon-btn send" aria-label="Odeslat">➤</button>
+          </div>
+        </div>
+        <div id="toolsMenu" class="pop-menu hidden">
+          <div class="pop-title">Nástroje</div>
+          <button class="tool-opt" id="toolAttach"><span class="tool-ico">📎</span><span><b>Přiložit soubor / obrázek</b><small>AI si ho přečte</small></span></button>
+          <button class="tool-opt" id="toolSearch"><span class="tool-ico">🌐</span><span><b>Hledání na webu</b><small id="toolSearchState">zapnuto</small></span></button>
+          <button class="tool-opt" id="toolVoice"><span class="tool-ico">🔊</span><span><b>Hlasové odpovědi</b><small id="toolVoiceState">zapnuto</small></span></button>
+          <button class="tool-opt" id="toolGithub"><span class="tool-ico">🔗</span><span><b>GitHub</b><small>propojení a zveřejnění appky</small></span></button>
         </div>
         <div id="modeMenu" class="pop-menu hidden">
-          <div class="mode-grid">
-            <button class="mode-opt" data-mode="battle"><b>⚔️ Battle</b><small>dva AI se utkají</small></button>
-            <button class="mode-opt" data-mode="agent"><b>🤖 Agent</b><small>AI sama tvoří a plní úkoly</small></button>
-            <button class="mode-opt" data-mode="chat"><b>💬 Chat</b><small>čisté povídání</small></button>
-            <button class="mode-opt" data-mode="team"><b>🐝 Tým</b><small>více AI spolupracuje</small></button>
-          </div>
+          <button class="mode-opt" data-mode="battle"><span class="tool-ico">⚔️</span><span><b>Battle</b><small>dva AI modely se utkají</small></span></button>
+          <button class="mode-opt" data-mode="agent"><span class="tool-ico">🤖</span><span><b>Agent</b><small>složité úkoly – AI sama tvoří a plní</small></span></button>
+          <button class="mode-opt" data-mode="chat"><span class="tool-ico">💬</span><span><b>Chat</b><small>povídání s jedním modelem</small></span></button>
+          <button class="mode-opt" data-mode="team"><span class="tool-ico">🐝</span><span><b>Tým</b><small>více AI spolupracuje</small></span></button>
         </div>
         <div id="modelMenu" class="pop-menu hidden">
           <div class="pop-head">🧠 Tvůj model</div>
           <div id="modelList"></div>
           <div class="pop-head hidden" id="oppHead">⚔️ Soupeř (B)</div>
           <div id="oppList"></div>
-        </div>
-      </div>
-      <div id="composer">
-        <div id="recBar" class="hidden"><span class="rec-dot"></span><span id="recText">Poslouchám…</span><button id="recStop" class="icon-btn small">✕</button></div>
-        <div id="attachPreview" class="hidden"></div>
-        <div class="composer-row">
-          <button id="btnAttach" class="icon-btn" title="Přiložit obrázek – AI ho přečte">📎</button>
-          <input type="file" id="attachInput" accept="image/*" hidden>
-          <textarea id="input" rows="1" placeholder="Napiš zprávu, nebo zmáčkni 🎙️ a mluv…"></textarea>
-          <button id="btnSend" class="icon-btn send" aria-label="Odeslat">➤</button>
         </div>
       </div>
     </section>
