@@ -37,7 +37,8 @@ const DEF_SETTINGS = {
   imgModel: 'gemini-3.1-flash-image',
   searchDDG: true, searchSocial: true, hiveSize: 4,
   githubToken: '',
-  veoModel: 'veo-3.1-generate-preview'
+  veoModel: 'veo-3.1-generate-preview',
+  chatMode: 'agent', battleModel: 'gemini-3.5-flash-lite', battleScore: {}
 };
 
 let settings, chats, memory, currentChatId;
@@ -56,6 +57,38 @@ function currentModel() {
   const m = (settings.model || '').trim();
   if (m) return m;
   return settings.provider === 'openai' ? 'gpt-4o-mini' : 'gemini-3.8-flash';
+}
+
+const MODEL_OPTS = [
+  ['gemini-3.8-flash', '⚡ Gemini 3.8 Flash'],
+  ['gemini-3.5-flash-lite', '💨 Gemini 3.5 Lite'],
+  ['gpt-4o-mini', '🟣 GPT-4o mini'],
+  ['gpt-4o', '🔮 GPT-4o']
+];
+
+function modelLabel(m) {
+  const o = MODEL_OPTS.find((x) => x[0] === m);
+  return o ? o[1] : m;
+}
+
+async function chatOnceWith(model, history, sys) {
+  const prevM = settings.model, prevP = settings.provider;
+  try {
+    settings.model = model;
+    settings.provider = /^gpt/i.test(model) ? 'openai' : 'gemini';
+    return await chatOnce(history, sys);
+  } finally {
+    settings.model = prevM; settings.provider = prevP;
+  }
+}
+
+function syncModeUI() {
+  const mode = (settings && settings.chatMode) || 'agent';
+  $$('#modeChips .mode-chip').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+  const bs = $('#battleSel');
+  if (bs) bs.classList.toggle('hidden', mode !== 'battle');
+  const mp = $('#modelPicker');
+  if (mp && settings && settings.model && MODEL_OPTS.some((o) => o[0] === settings.model)) mp.value = settings.model;
 }
 
 /* ---------- motiv / vzhled (editor v appce) ---------- */
@@ -1481,6 +1514,7 @@ let sending = false;
 async function send(text) {
   text = (text || '').trim();
   if (!text || sending) return;
+  if ((settings.chatMode || 'agent') === 'team') { return sendTeam(text); }
   if (!settings.apiKey.trim()) {
     toast('Nejdřív přidej API klíč (Nastavení → Mozek 🧠) – zdarma na aistudio.google.com/apikey', 6000);
     switchView('settings');
@@ -1506,12 +1540,47 @@ async function send(text) {
   bubble.innerHTML = '<span class="cursor"></span>';
   $('#topStatus').textContent = 'přemýšlím…';
 
-  const sys = buildSystem();
+  const sys = buildSystem() + (settings.chatMode === 'chat'
+    ? '\n\nRežim čistého chatu: NEPOUŽÍVEJ žádné [AKCE:…] příkazy ani speciální značky, jen odpovídej textem.'
+    : '');
   let replyText = '';
   const shownImages = [];
   const shownAudios = [];
 
   try {
+    if ((settings.chatMode || 'agent') === 'battle') {
+      const modelA = currentModel();
+      const modelB = settings.battleModel || 'gemini-3.5-flash-lite';
+      const labelA = modelLabel(modelA), labelB = modelLabel(modelB);
+      bubble.innerHTML = renderMd('⚔️ **Battle** – ' + labelA + ' vs ' + labelB) +
+        '<div class="battle-grid">' +
+        '<div class="battle-col"><b>🅰️ ' + esc(labelA) + '</b><div class="btl" id="btlA"><span class="cursor"></span></div></div>' +
+        '<div class="battle-col"><b>🅱️ ' + esc(labelB) + '</b><div class="btl" id="btlB"><span class="cursor"></span></div></div>' +
+        '</div>';
+      scrollBottom();
+      const bHistory = chat.messages.slice(-30).map((m) => ({ role: m.role, content: m.content, image: m.image, mime: m.mime }));
+      let aText = '', bText = '';
+      try { aText = ((await chatOnceWith(modelA, bHistory, sys)).text || '').trim(); } catch (e) { aText = '(chyba: ' + (e.message || e) + ')'; }
+      $('#btlA').innerHTML = renderMd(aText);
+      scrollBottom();
+      try { bText = ((await chatOnceWith(modelB, bHistory, sys)).text || '').trim(); } catch (e) { bText = '(chyba: ' + (e.message || e) + ')'; }
+      $('#btlB').innerHTML = renderMd(bText);
+      bubble.insertAdjacentHTML('beforeend',
+        '<div class="battle-vote"><button class="btn" data-w="a">👍 A lepší</button><button class="btn" data-w="b">👍 B lepší</button></div>');
+      bubble.querySelectorAll('.battle-vote button').forEach((b) => b.addEventListener('click', () => {
+        const score = settings.battleScore || (settings.battleScore = {});
+        const m = b.dataset.w === 'a' ? modelA : modelB;
+        score[m] = (score[m] || 0) + 1;
+        saveSettings();
+        toast('👍 Výhra: ' + (b.dataset.w === 'a' ? labelA : labelB));
+      }));
+      chat.messages.push({
+        role: 'assistant',
+        content: '⚔️ **Battle: ' + labelA + ' vs ' + labelB + '**\n\n**🅰️ ' + labelA + '**\n' + aText + '\n\n**🅱️ ' + labelB + '**\n' + bText
+      });
+      saveChats();
+      scrollBottom();
+    } else {
     for (let step = 0; step < 4; step++) {
       const history = chat.messages.slice(-30).map((m) => ({ role: m.role, content: m.content, image: m.image, mime: m.mime }));
       let result;
@@ -1529,7 +1598,7 @@ async function send(text) {
         }
       }
       const raw = (result.text || '').trim() || '(model nevrátil odpověď)';
-      const action = parseAction(raw);
+      const action = (settings.chatMode === 'chat') ? null : parseAction(raw);
       if (!action) {
         const mem = extractMemory(raw);
         const content = mem.cleaned;
@@ -1570,6 +1639,7 @@ async function send(text) {
           shownImages.map((u) => `<img class="chat-img" src="${u}" alt="obrázek">`).join('');
       }
     }
+    }
     renderChatList();
   } catch (e) {
     bubble.innerHTML = '<p>⚠️ Chyba: ' + esc(e.message || String(e)) + '</p>' +
@@ -1581,6 +1651,43 @@ async function send(text) {
     if (replyText && settings.voiceReplies) {
       await speak(speechText(replyText));
     }
+    if (callMode) startListen();
+  }
+}
+
+async function sendTeam(text) {
+  text = (text || '').trim();
+  if (!text || sending) return;
+  if (!settings.apiKey.trim()) {
+    toast('Nejdřív přidej API klíč (Nastavení → Mozek 🧠).');
+    switchView('settings');
+    return;
+  }
+  sending = true;
+  stopSpeak();
+  const chat = getChat(true);
+  chat.messages.push({ role: 'user', content: '🐝 Tým AI: ' + text });
+  if (chat.title === 'Nový chat') chat.title = text.slice(0, 32);
+  saveChats(); renderChatList(); renderMessages();
+  const el = addMessageEl('assistant', '');
+  const bubble = el.querySelector('.bubble');
+  bubble.innerHTML = '<div class="mem-chip">🐝 Tým AI (více modelů) přemýšlí…</div><span class="cursor"></span>';
+  $('#topStatus').textContent = 'tým přemýšlí…';
+  try {
+    const hive = await runHive(text);
+    const r = await chatOnce([{ role: 'user', content: hive }],
+      'Jsi vedoucí AI týmu. Shrň výstupy všech členů týmu do jedné kvalitní, přehledné odpovědi pro uživatele. Česky, s odrážkami.');
+    const content = '🐝 **Tým AI** – ' + (settings.hiveSize || 4) + ' specialistů spolupracovalo\n\n' + (r.text || '').trim();
+    chat.messages.push({ role: 'assistant', content });
+    saveChats();
+    bubble.innerHTML = renderMd(content);
+  } catch (e) {
+    bubble.innerHTML = '<p>⚠️ Chyba: ' + esc(e.message || String(e)) + '</p>';
+  } finally {
+    $('#topStatus').textContent = 'připraven/a';
+    scrollBottom();
+    sending = false;
+    renderChatList();
     if (callMode) startListen();
   }
 }
@@ -2096,6 +2203,29 @@ function initChrome() {
     const p = $('#chatPanel');
     if (!p.classList.contains('hidden') && !p.contains(e.target) && e.target.id !== 'btnChats') hideChatPanel();
   });
+
+  $$('#modeChips .mode-chip').forEach((b) => b.addEventListener('click', () => {
+    settings.chatMode = b.dataset.mode;
+    saveSettings();
+    syncModeUI();
+    if (b.dataset.mode === 'battle') toast('⚔️ Battle: pošli zprávu a dva AI modely se utkají!');
+    if (b.dataset.mode === 'team') toast('🐝 Tým: pošli zprávu a rozešle ji více AI naráz!');
+    $('#input').focus();
+  }));
+  const mp = $('#modelPicker');
+  mp.innerHTML = MODEL_OPTS.map((o) => '<option value="' + o[0] + '">' + o[1] + '</option>').join('');
+  mp.addEventListener('change', () => {
+    settings.model = mp.value;
+    settings.provider = /^gpt/i.test(mp.value) ? 'openai' : 'gemini';
+    saveSettings();
+    const me = $('#setModel'); if (me) me.value = mp.value;
+    toast('🧠 Model: ' + modelLabel(mp.value));
+  });
+  const bs = $('#battleSel');
+  bs.innerHTML = MODEL_OPTS.map((o) => '<option value="' + o[0] + '">' + o[1] + '</option>').join('');
+  bs.value = settings.battleModel || 'gemini-3.5-flash-lite';
+  bs.addEventListener('change', () => { settings.battleModel = bs.value; saveSettings(); });
+  syncModeUI();
 
   $('#btnNewChat').addEventListener('click', () => {
     currentChatId = null;
