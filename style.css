@@ -1,15 +1,15 @@
 /* ===== Dark AI ===== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0b0708;
-  --bg2: #140b0c;
+  --bg: #0c0c0e;
+  --bg2: #151517;
   --card: rgba(255,255,255,0.045);
   --card-b: rgba(255,255,255,0.09);
-  --txt: #fdeef0;
-  --muted: #c9a0a6;
-  --accent: #e50914;
-  --accent2: #ff2440;
-  --grad: linear-gradient(135deg, #e50914, #6b0f18);
+  --txt: #f4f4f6;
+  --muted: #a2a2ac;
+  --accent: #b9b9c4;
+  --accent2: #8f8f9a;
+  --grad: linear-gradient(135deg, #6a6a74, #3a3a42);
   --radius: 18px;
   --shadow: 0 10px 40px rgba(0,0,0,0.35);
 }
@@ -444,3 +444,9 @@ audio { filter: invert(0.92) hue-rotate(180deg); }
 @media (max-width: 900px) {
   main { padding-bottom: calc(46px + env(safe-area-inset-bottom)); }
 }
+
+/* ===== v10: bez spodní navigační lišty – navigace jen v ☰ menu ===== */
+@media (max-width: 900px) {
+  main { padding-bottom: 0; }
+}
+#tabbar { display: none !important; }
