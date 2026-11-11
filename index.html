@@ -76,15 +76,23 @@
       </div>
       <div id="chatStrip"></div>
       <div id="modeBar">
-        <div class="mode-chips" id="modeChips">
-          <button class="mode-chip" data-mode="chat">💬 Chat</button>
-          <button class="mode-chip active" data-mode="agent">🤖 Agent</button>
-          <button class="mode-chip" data-mode="battle">⚔️ Battle</button>
-          <button class="mode-chip" data-mode="team">🐝 Tým</button>
+        <div class="mode-row">
+          <button id="btnMode" class="mode-pill">🤖 Agent ▾</button>
+          <button id="btnModel" class="mode-pill">⚡ Gemini 3.8 Flash ▾</button>
         </div>
-        <div class="mode-sel">
-          <select id="modelPicker" title="AI model"></select>
-          <select id="battleSel" class="hidden" title="Soupeř do battle"></select>
+        <div id="modeMenu" class="pop-menu hidden">
+          <div class="mode-grid">
+            <button class="mode-opt" data-mode="battle"><b>⚔️ Battle</b><small>dva AI se utkají</small></button>
+            <button class="mode-opt" data-mode="agent"><b>🤖 Agent</b><small>AI sama tvoří a plní úkoly</small></button>
+            <button class="mode-opt" data-mode="chat"><b>💬 Chat</b><small>čisté povídání</small></button>
+            <button class="mode-opt" data-mode="team"><b>🐝 Tým</b><small>více AI spolupracuje</small></button>
+          </div>
+        </div>
+        <div id="modelMenu" class="pop-menu hidden">
+          <div class="pop-head">🧠 Tvůj model</div>
+          <div id="modelList"></div>
+          <div class="pop-head hidden" id="oppHead">⚔️ Soupeř (B)</div>
+          <div id="oppList"></div>
         </div>
       </div>
       <div id="composer">
