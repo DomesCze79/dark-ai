@@ -2722,6 +2722,12 @@ function init() {
   // service worker (PWA) – selže tiše v sandboxu, v prohlížeči funguje
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
   }
 }
 
