@@ -57,6 +57,9 @@ function loadState() {
     }
     saveSettings();
   }
+  const deadOr = ['meta-llama/llama-3.3-70b-instruct:free', 'deepseek/deepseek-chat:free', 'google/gemma-3-27b-it:free'];
+  if (deadOr.indexOf(settings.model) >= 0) { settings.model = 'openrouter/free'; saveSettings(); }
+  if (deadOr.indexOf(settings.battleModel) >= 0) { settings.battleModel = 'gemini-3.5-flash-lite'; saveSettings(); }
   chats = loadJSON('mai.chats', []);
   memory = loadJSON('mai.memory', []);
   currentChatId = loadJSON('mai.current', null);
@@ -69,7 +72,7 @@ function currentModel() {
   const m = (settings.model || '').trim();
   if (m) return m;
   if (settings.provider === 'openai') return 'gpt-4o-mini';
-  if (settings.provider === 'openrouter') return 'meta-llama/llama-3.3-70b-instruct:free';
+  if (settings.provider === 'openrouter') return 'openrouter/free';
   return 'gemini-3.5-flash-lite';
 }
 
@@ -94,9 +97,10 @@ function openaiChatUrl(provider) {
 const MODEL_OPTS = [
   ['gemini-3.5-flash-lite', '💨 Gemini 3.5 Lite'],
   ['gemini-3.8-flash', '⚡ Gemini 3.8 Flash'],
-  ['meta-llama/llama-3.3-70b-instruct:free', '🦙 Llama 3.3 70B (zdarma)'],
-  ['deepseek/deepseek-chat:free', '🐋 DeepSeek (zdarma)'],
-  ['google/gemma-3-27b-it:free', '💎 Gemma 27B (zdarma)'],
+  ['openrouter/free', '🆓 Router zdarma (automaticky)'],
+  ['nvidia/nemotron-3-ultra-550b-a55b:free', '🧠 Nemotron 3 Ultra (zdarma)'],
+  ['google/gemma-4-31b-it:free', '💎 Gemma 4 31B (zdarma)'],
+  ['nvidia/nemotron-3.5-lightning:free', '⚡ Nemotron Lightning (zdarma)'],
   ['gpt-4o-mini', '🟣 GPT-4o mini'],
   ['gpt-4o', '🔮 GPT-4o']
 ];
@@ -124,14 +128,35 @@ function menuFor(menu) {
   if (menu) menu.classList.toggle('hidden');
 }
 
-function fillModels(container, current, onPick) {
+function fillModels(container, current, onPick, opts) {
   container.innerHTML = '';
-  MODEL_OPTS.forEach((o) => {
+  (opts || MODEL_OPTS).forEach((o) => {
     const b = document.createElement('button');
     b.className = 'model-opt' + (o[0] === current ? ' active' : '');
-    b.innerHTML = '<span>' + o[1] + '</span><span class="tick">' + (o[0] === current ? '✓' : '') + '</span>';
+    b.innerHTML = '<span>' + esc(o[1]) + '</span><span class="tick">' + (o[0] === current ? '✓' : '') + '</span>';
     b.addEventListener('click', () => onPick(o[0]));
     container.appendChild(b);
+  });
+}
+
+let OR_FREE_CACHE = null;
+function fetchOrFreeModels() {
+  if (OR_FREE_CACHE) return Promise.resolve(OR_FREE_CACHE);
+  return fetch('https://openrouter.ai/api/v1/models')
+    .then((r) => r.json())
+    .then((j) => {
+      OR_FREE_CACHE = (j.data || [])
+        .filter((m) => m.id && /:free$/.test(m.id))
+        .map((m) => [m.id, '🆓 ' + String(m.name || m.id).replace(/ \(free\)$/i, '')]);
+      return OR_FREE_CACHE;
+    })
+    .catch(() => { OR_FREE_CACHE = []; return OR_FREE_CACHE; });
+}
+
+function fillModelsAsync(container, current, onPick) {
+  fetchOrFreeModels().then((extra) => {
+    const opts = MODEL_OPTS.concat((extra || []).filter((o) => !MODEL_OPTS.some((x) => x[0] === o[0])));
+    fillModels(container, current, onPick, opts);
   });
 }
 
@@ -146,24 +171,30 @@ function syncModeUI() {
   if (pm && settings) pm.innerHTML = '⚡ <small>▾</small>';
   const ss = $('#toolSearchState'); if (ss && settings) ss.textContent = settings.search ? 'zapnuto' : 'vypnuto';
   const vs = $('#toolVoiceState'); if (vs && settings) vs.textContent = settings.voiceReplies ? 'zapnuto' : 'vypnuto';
-  const oppHead = $('#oppHead'), oppList = $('#oppList');
-  if (oppHead) oppHead.classList.toggle('hidden', mode !== 'battle');
-  if (oppList) {
-    oppList.classList.toggle('hidden', mode !== 'battle');
-    fillModels(oppList, settings.battleModel, (m) => {
-      settings.battleModel = m; saveSettings(); syncModeUI(); menuFor(null);
-      toast('⚔️ Soupeř: ' + modelLabel(m));
-    });
-  }
-  const ml = $('#modelList');
-  if (ml) fillModels(ml, currentModel(), (m) => {
+  const pickMain = (m) => {
     settings.model = m;
-    settings.provider = /^gpt/i.test(m) ? 'openai' : 'gemini';
+    settings.provider = providerForModel(m);
     saveSettings();
     const me = $('#setModel'); if (me) me.value = m;
     syncModeUI(); menuFor(null);
     toast('🧠 Model: ' + modelLabel(m));
-  });
+  };
+  const pickOpp = (m) => {
+    settings.battleModel = m; saveSettings(); syncModeUI(); menuFor(null);
+    toast('⚔️ Soupeř: ' + modelLabel(m));
+  };
+  const oppHead = $('#oppHead'), oppList = $('#oppList');
+  if (oppHead) oppHead.classList.toggle('hidden', mode !== 'battle');
+  if (oppList) {
+    oppList.classList.toggle('hidden', mode !== 'battle');
+    fillModels(oppList, settings.battleModel, pickOpp);
+    fillModelsAsync(oppList, settings.battleModel, pickOpp);
+  }
+  const ml = $('#modelList');
+  if (ml) {
+    fillModels(ml, currentModel(), pickMain);
+    fillModelsAsync(ml, currentModel(), pickMain);
+  }
 }
 
 /* ---------- motiv / vzhled (editor v appce) ---------- */
@@ -2160,7 +2191,7 @@ function initSettings() {
     const m = settings.model || '';
     if (settings.provider === 'openai' && (!m || providerForModel(m) !== 'openai')) settings.model = 'gpt-4o-mini';
     if (settings.provider === 'gemini' && (!m || providerForModel(m) !== 'gemini')) settings.model = 'gemini-3.5-flash-lite';
-    if (settings.provider === 'openrouter' && (!m || providerForModel(m) !== 'openrouter')) settings.model = 'meta-llama/llama-3.3-70b-instruct:free';
+    if (settings.provider === 'openrouter' && (!m || providerForModel(m) !== 'openrouter')) settings.model = 'openrouter/free';
     modelEl.value = settings.model;
     saveSettings();
     syncHeader();
