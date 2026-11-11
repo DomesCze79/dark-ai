@@ -38,6 +38,7 @@
   <main>
     <header id="topbar">
       <button id="btnMenu" class="icon-btn" aria-label="Menu">☰</button>
+      <button id="btnChats" class="icon-btn" title="Přepnout chat">💬</button>
       <div class="title">
         <span id="topAvatar" class="avatar">🤖</span>
         <div><b id="topName">Dark</b><small id="topStatus">připraven/a</small></div>
@@ -49,6 +50,12 @@
         <button id="btnCall" class="icon-btn" title="Hovor – mluv a poslouchej">📞</button>
       </div>
     </header>
+
+    <div id="chatPanel" class="hidden">
+      <div class="chat-panel-head">💬 Tvoje chaty <span class="muted small">každý na jinou práci</span></div>
+      <button class="btn primary wide" id="btnNewChat2">＋ Nový chat</button>
+      <div id="chatPanelList"></div>
+    </div>
 
     <!-- ================= CHAT ================= -->
     <section id="view-chat" class="view">
@@ -383,6 +390,14 @@
       </div>
     </section>
   </main>
+
+  <nav id="tabbar">
+    <button class="nav-btn active" data-view="chat">💬<span>Chat</span></button>
+    <button class="nav-btn" data-view="studio">🎬<span>Studio</span></button>
+    <button class="nav-btn" data-view="plugins">🧩<span>Funkce</span></button>
+    <button class="nav-btn" data-view="pc">🖥️<span>PC</span></button>
+    <button class="nav-btn" data-view="settings">⚙️<span>Nastavení</span></button>
+  </nav>
 </div>
 
 <div id="toast" class="hidden"></div>
