@@ -1,11 +1,11 @@
 /* Dark AI – motiv (generováno z Nastavení → 🎨 Vzhled) */
 window.DARK_AI_THEME = {
   appName: 'Dark AI',
-  accent: '#e50914',
-  accent2: '#ff2440',
-  grad: 'linear-gradient(135deg, #e50914, #6b0f18)',
-  bg: '#0b0708',
-  bg2: '#140b0c'
+  accent: '#b9b9c4',
+  accent2: '#8f8f9a',
+  grad: 'linear-gradient(135deg, #6a6a74, #3a3a42)',
+  bg: '#0c0c0e',
+  bg2: '#151517'
 };
 (function () {
   var t = window.DARK_AI_THEME, r = document.documentElement.style;
