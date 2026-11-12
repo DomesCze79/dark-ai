@@ -2099,10 +2099,10 @@ async function veoModelCandidates() {
     }
   } catch (e) { /* nevadí – zkusí se výchozí názvy */ }
   const pref = [];
-  if (settings.veoModel) pref.push(settings.veoModel.trim());
-  ['veo-3.1-generate-preview', 'veo-3.1-fast-generate-preview', 'veo-3.1-lite-generate-preview', 'veo-3.0-generate-preview'].forEach((p) => {
+  ['veo-3.1-lite-generate-preview', 'veo-3.1-fast-generate-preview', 'veo-3.1-generate-preview', 'veo-3.0-generate-preview'].forEach((p) => {
     if (pref.indexOf(p) < 0) pref.push(p);
   });
+  if (settings.veoModel && pref.indexOf(settings.veoModel.trim()) < 0) pref.push(settings.veoModel.trim());
   if (avail) {
     VEO_CANDIDATES = pref.filter((p) => avail.indexOf(p) >= 0).concat(avail.filter((p) => pref.indexOf(p) < 0));
     if (!VEO_CANDIDATES.length) VEO_CANDIDATES = ['__none__'];
