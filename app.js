@@ -2062,7 +2062,22 @@ $('#stVeoGo').addEventListener('click', async () => {
     status.textContent = '✅ Hotovo!';
     toast('AI video hotové ✨');
   } catch (e) {
-    status.textContent = '❌ ' + (e.message || e);
+    status.textContent = '🎙️ Filmové video (Veo) tvůj klíč nemá – točím dabované textové video (záložní režim)…';
+    try {
+      let audioBlob = null;
+      if (settings.apiKey.trim()) {
+        try { audioBlob = await geminiTTS(prompt); } catch (e2) { /* tiché video */ }
+      }
+      const blob = await makeKineticVideo(prompt, audioBlob, [720, 1280]);
+      const url = URL.createObjectURL(blob);
+      $('#stVeoPlayer').src = url;
+      $('#stVeoWrap').hidden = false;
+      $('#stVeoDl').href = url;
+      status.textContent = '✅ Hotovo v záložním režimu (dabované textové video – pravé filmové záběry zdarma klíč nemá).';
+      toast('🎬 Video hotové (záložní režim)');
+    } catch (e2) {
+      status.textContent = '❌ ' + (e.message || e);
+    }
   } finally {
     btn.disabled = false;
   }
