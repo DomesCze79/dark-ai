@@ -495,7 +495,6 @@ function buildSystem() {
   p.push('Hledej všude – i v zákoutích internetu: fóra, blogy, komunity, staré stránky. Kromě vestavěného hledání můžeš použít [AKCE:HLEDEJ] (meta-hledání přes více vyhledávačů).');
   p.push('Máš nástroje (aplikace je provede za tebe a vrátí výsledek jako [VÝSLEDEK AKCE]). Když nějaký potřebuješ, vypiš DO ZPRÁVY POUZE jeho značku (jednu, jako poslední věc):\n' +
     '[AKCE:OBRAZEK] popis obrázku anglicky → vygeneruje se obrázek\n' +
-    '[AKCE:SHORT] téma → vygeneruje krátké svislé video (short jako na TikToku) s obrázky, hlasem a titulky\n' +
     '[AKCE:WEB] https://url → aplikace přečte text stránky a vrátí ho\n' +
     '[AKCE:HLEDEJ] dotaz → hluboké hledání přes více vyhledávačů (i sociální sítě, fóra)\n' +
     '[AKCE:KOD] ```javascript kód ``` → kód se spustí v sandboxu, vrátí se výstup konzole\n' +
@@ -805,8 +804,6 @@ function parseAction(text) {
   if (m) return { type: 'web', url: m[1], icon: '🕸️', label: 'Čtu webovou stránku' };
   m = text.match(/\[AKCE:\s*HLEDEJ\]\s*([^\n\[\]]+)/i);
   if (m) return { type: 'search', query: m[1].trim(), icon: '🔎', label: 'Hledám v zákoutích internetu' };
-  m = text.match(/\[AKCE:\s*SHORT\]\s*([^\n\[\]]+)/i);
-  if (m) return { type: 'short', topic: m[1].trim(), icon: '📱', label: 'Tvořím short video' };
   m = text.match(/\[AKCE:\s*K[ÓO]D\]\s*```(\w*)\n?([\s\S]*?)```/i);
   if (m) return { type: 'code', lang: (m[1] || 'javascript').toLowerCase(), code: m[2], icon: '💻', label: 'Spouštím kód' };
   m = text.match(/\[AKCE:\s*HUDBA\]\s*```(?:json)?\n?([\s\S]*?)```/i);
@@ -842,13 +839,6 @@ async function executeAction(a, shownImages, shownAudios) {
       const url = URL.createObjectURL(blob);
       if (shownImages) shownImages.push(url);
       return '[VÝSLEDEK AKCE OBRAZEK] Obrázek byl vygenerován a je zobrazený uživateli.';
-    }
-    if (a.type === 'short') {
-      const r = await runShorts(a.topic, (s) => toast(s, 4000));
-      const url = URL.createObjectURL(r.blob);
-      videoUrls.add(url);
-      if (shownImages) shownImages.push(url);
-      return '[VÝSLEDEK AKCE SHORT] Short video "' + r.title + '" je hotové a zobrazené uživateli (svislé video s hlasem a titulky).';
     }
     if (a.type === 'web') {
       const t = await fetchWebText(a.url);
@@ -1768,7 +1758,7 @@ async function send(text) {
         saveChats();
         bubble.innerHTML = renderMd(content);
         for (const u of shownImages) {
-          bubble.insertAdjacentHTML('beforeend', videoUrls.has(u) ? `<video class="chat-img" controls playsinline src="${u}"></video>` : `<img class="chat-img" src="${u}" alt="vygenerovaný obrázek">`);
+          bubble.insertAdjacentHTML('beforeend', `<img class="chat-img" src="${u}" alt="vygenerovaný obrázek">`);
         }
         for (const u of shownAudios) {
           bubble.insertAdjacentHTML('beforeend', `<audio class="chat-audio" controls src="${u}"></audio>`);
@@ -1797,7 +1787,7 @@ async function send(text) {
       if (step === 3) {
         bubble.innerHTML = renderMd(stripActions(raw)) +
           `<div class="mem-chip">⚠️ Limit kroků agenta dosažen.</div>` +
-          shownImages.map((u) => videoUrls.has(u) ? `<video class="chat-img" controls playsinline src="${u}"></video>` : `<img class="chat-img" src="${u}" alt="obrázek">`).join('');
+          shownImages.map((u) => `<img class="chat-img" src="${u}" alt="obrázek">`).join('');
       }
     }
     }
@@ -2052,210 +2042,6 @@ async function makeKineticVideo(text, audioBlob) {
   return new Blob(chunks, { type: mime || 'video/webm' });
 }
 
-/* ---------- AI Shorts (TikTok-style) ---------- */
-const videoUrls = new Set();
-
-async function shortsScript(topic) {
-  const key = settings.apiKey.trim();
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=' + encodeURIComponent(key);
-  const body = {
-    contents: [{ role: 'user', parts: [{ text:
-      'Vytvoř scénář krátkého svislého videa (short ve stylu TikTok / YouTube Shorts) na téma: ' + topic + '\n' +
-      'Vrať VÝHRADNĚ platný JSON bez markdown a bez komentáře:\n' +
-      '{"title":"název","scenes":[{"cap":"titulek na obrazovku, max 6 slov, česky","say":"1-2 věty komentáře hlasem, česky","img":"english prompt for a vertical 9:16 video frame, vivid, cinematic, no text"}]}\n' +
-      '3 až 5 scén. První scéna = hook (zaujme hned). Scény na sebe navazují, poslední má výzvu (follow/lajk).'
-    }]}]
-  };
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok || j.error) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
-  const txt = (((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [])
-    .map((p) => p.text || '').join('')).trim();
-  const raw = txt.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-  const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
-  if (!data.scenes || !data.scenes.length) throw new Error('Scénář neobsahuje scény.');
-  return { title: String(data.title || topic), scenes: data.scenes.slice(0, 5) };
-}
-
-function loadBlobImage(blob) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => res(img);
-    img.onerror = () => rej(new Error('Obrázek se nepodařilo načíst.'));
-    img.src = URL.createObjectURL(blob);
-  });
-}
-
-async function makeShortsVideo(scenes, audioBlobs) {
-  if (!window.MediaRecorder) throw new Error('Tvůj prohlížeč neumí nahrávat video.');
-  const W = 720, H = 1280;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-
-  const imgs = [];
-  for (const s of scenes) imgs.push(s.imgBlob ? await loadBlobImage(s.imgBlob) : null);
-
-  const ac = new (window.AudioContext || window.webkitAudioContext)();
-  const buffers = [];
-  for (const b of audioBlobs) {
-    let buf = null;
-    if (b) {
-      try { buf = await ac.decodeAudioData(await b.arrayBuffer()); } catch (e) { buf = null; }
-    }
-    buffers.push(buf);
-  }
-
-  const durs = scenes.map((s, i) => Math.max(2.4, buffers[i] ? buffers[i].duration + 0.35 : 3));
-  const starts = [];
-  let total = 0;
-  for (const d of durs) { starts.push(total); total += d; }
-
-  const stream = canvas.captureStream(30);
-  const dest = ac.createMediaStreamDestination();
-  dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
-
-  const mimes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
-  const mime = mimes.find((m) => window.MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
-  const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-  const chunks = [];
-  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-  const stopped = new Promise((res) => { rec.onstop = res; });
-
-  const drawFrame = (t) => {
-    let i = 0;
-    while (i < durs.length - 1 && t >= starts[i] + durs[i]) i++;
-    const q = Math.max(0, Math.min(1, (t - starts[i]) / durs[i]));
-    const s = scenes[i];
-    const img = imgs[i];
-    ctx.fillStyle = '#0c0c0e';
-    ctx.fillRect(0, 0, W, H);
-    if (img) {
-      const dir = i % 2 === 0 ? 1 : -1;
-      const scale = 1.04 + 0.12 * q;
-      const base = Math.max(W / img.width, H / img.height) * scale;
-      const w = img.width * base, h = img.height * base;
-      ctx.drawImage(img, (W - w) / 2 + dir * (q - 0.5) * 36, (H - h) / 2 - dir * (q - 0.5) * 22, w, h);
-    } else {
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, '#1a0d10'); g.addColorStop(1, '#2a2a33');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    }
-    const fade = Math.max(0, 1 - q * 6);
-    if (fade > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fade.toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
-    const tg = ctx.createLinearGradient(0, 0, 0, H * 0.3);
-    tg.addColorStop(0, 'rgba(0,0,0,0.5)'); tg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = tg; ctx.fillRect(0, 0, W, H * 0.3);
-    const bg = ctx.createLinearGradient(0, H * 0.55, 0, H);
-    bg.addColorStop(0, 'rgba(0,0,0,0)'); bg.addColorStop(1, 'rgba(0,0,0,0.72)');
-    ctx.fillStyle = bg; ctx.fillRect(0, H * 0.55, W, H * 0.45);
-
-    const cap = String(s.cap || '').slice(0, 60);
-    const fs = 62;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = '800 ' + fs + 'px -apple-system, "Segoe UI", sans-serif';
-    const words = cap.split(/\s+/).filter(Boolean);
-    const lines = []; let cur = '';
-    for (const w of words) {
-      if ((cur + ' ' + w).trim().length > 14) { lines.push(cur.trim()); cur = w; }
-      else cur += ' ' + w;
-    }
-    if (cur.trim()) lines.push(cur.trim());
-    const startY = H * 0.3 - (lines.length - 1) * fs * 0.58;
-    lines.forEach((ln, k) => {
-      const y = startY + k * fs * 1.16;
-      ctx.lineWidth = 12; ctx.lineJoin = 'round';
-      ctx.strokeStyle = 'rgba(0,0,0,0.92)';
-      ctx.strokeText(ln, W / 2, y);
-      ctx.fillStyle = k === lines.length - 1 ? '#ffd84d' : '#ffffff';
-      ctx.fillText(ln, W / 2, y);
-    });
-
-    const p = Math.max(0, Math.min(1, t / total));
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    ctx.fillRect(0, H - 14, W, 10);
-    ctx.fillStyle = '#e50914';
-    ctx.fillRect(0, H - 14, W * p, 10);
-    ctx.font = '600 26px -apple-system, "Segoe UI", sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText('🤖 ' + (settings.name || 'Dark AI') + ' · ' + (i + 1) + '/' + scenes.length, W / 2, H - 56);
-  };
-
-  drawFrame(0);
-  rec.start(200);
-  try { await ac.resume(); } catch (e) {}
-  const baseT = ac.currentTime + 0.25;
-  buffers.forEach((buf, i) => {
-    if (!buf) return;
-    const src = ac.createBufferSource();
-    src.buffer = buf;
-    src.connect(dest);
-    try { src.connect(ac.destination); } catch (e) {}
-    src.start(baseT + starts[i]);
-  });
-  const t0 = performance.now();
-  await new Promise((res) => {
-    let raf;
-    const tick = () => {
-      const t = (performance.now() - t0) / 1000;
-      drawFrame(t);
-      if (t >= total + 0.5) { cancelAnimationFrame(raf); res(); return; }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-  });
-  await sleep(350);
-  rec.stop();
-  await stopped;
-  try { ac.close(); } catch (e) {}
-  return new Blob(chunks, { type: mime || 'video/webm' });
-}
-
-async function runShorts(topic, onStatus) {
-  const st = onStatus || function () {};
-  if (!settings.apiKey.trim()) throw new Error('Shorts potřebují Gemini API klíč (Nastavení → Mozek 🧠).');
-  st('📝 Píšu scénář…');
-  const script = await shortsScript(topic);
-  st('📝 Scénář: ' + script.title + ' – generuji obrázky a hlas…');
-  const scenes = [];
-  const audioBlobs = [];
-  for (let i = 0; i < script.scenes.length; i++) {
-    const s = script.scenes[i];
-    st('🎨 Obrázek ' + (i + 1) + '/' + script.scenes.length + '…');
-    try {
-      s.imgBlob = await geminiImage(String(s.img || topic) + ', vertical 9:16 frame, cinematic, high detail, no text, no watermark');
-    } catch (e) { s.imgBlob = null; }
-    st('🎙️ Hlas ' + (i + 1) + '/' + script.scenes.length + '…');
-    try { audioBlobs.push(await geminiTTS(String(s.say || ''))); }
-    catch (e) { audioBlobs.push(null); }
-    scenes.push(s);
-  }
-  st('🎬 Skládám video…');
-  const blob = await makeShortsVideo(scenes, audioBlobs);
-  return { blob: blob, title: script.title };
-}
-
-$('#stShortGo').addEventListener('click', async () => {
-  const topic = $('#stShortPrompt').value.trim();
-  if (!topic) { toast('Napiš téma shortu.'); return; }
-  const btn = $('#stShortGo');
-  btn.disabled = true; btn.textContent = '⏳ Tvořím short…';
-  $('#stShortWrap').hidden = true;
-  try {
-    const r = await runShorts(topic, (s) => { $('#stShortStatus').textContent = s; });
-    const url = URL.createObjectURL(r.blob);
-    $('#stShortPlayer').src = url;
-    $('#stShortWrap').hidden = false;
-    $('#stShortDl').href = url; $('#stShortDl').hidden = false;
-    $('#stShortStatus').textContent = '✅ Hotovo: ' + r.title;
-    toast('Short hotový 📱');
-  } catch (e) {
-    $('#stShortStatus').textContent = '❌ ' + (e.message || e);
-  } finally {
-    btn.disabled = false; btn.textContent = '📱 Vytvořit short';
-  }
-});
-
 /* --- Veo (experimentální) --- */
 $('#stVeoGo').addEventListener('click', async () => {
   const prompt = $('#stVeoPrompt').value.trim();
@@ -2315,6 +2101,236 @@ $('#stVeoGo').addEventListener('click', async () => {
     toast('AI video hotové ✨');
   } catch (e) {
     status.textContent = '❌ ' + (e.message || e) + ' – pokud Veo není na tvém klíči dostupné, použij „Video z textu" výše.';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* --- Video seriál (Shorts / RealShort styl) --- */
+async function veoGenerate(prompt, aspect, statusCb) {
+  const key = (settings.apiKey || '').trim();
+  const model = (settings.veoModel || 'veo-3.1-generate-preview').trim();
+  const base = 'https://generativelanguage.googleapis.com/v1beta';
+  const res = await fetch(base + '/models/' + encodeURIComponent(model) + ':predictLongRunning?key=' + encodeURIComponent(key), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ instances: [{ prompt: prompt }], parameters: { aspectRatio: aspect } })
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || j.error) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
+  const opName = j.name;
+  if (!opName) throw new Error('API nevrátilo operaci.');
+  for (let i = 0; i < 75; i++) {
+    if (statusCb) statusCb(i * 8);
+    await sleep(8000);
+    const sres = await fetch(base + '/' + opName + '?key=' + encodeURIComponent(key));
+    const sj = await sres.json().catch(() => ({}));
+    if (sj.error) throw new Error(sj.error.message || 'Chyba operace.');
+    if (sj.done) {
+      const err = sj.error || (sj.response && sj.response.error);
+      if (err) throw new Error(err.message || 'Generování selhalo.');
+      const gvr = sj.response && sj.response.generateVideoResponse;
+      const sample = gvr && gvr.generatedSamples && gvr.generatedSamples[0];
+      const uri = sample && sample.video && sample.video.uri;
+      if (!uri) throw new Error('Video nebylo vytvořeno (možná ho zablokovaly bezpečnostní filtry).');
+      if (statusCb) statusCb(-1);
+      let dl = await fetch(uri, { headers: { 'x-goog-api-key': key } });
+      if (!dl.ok) dl = await fetch(uri + (uri.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(key));
+      if (!dl.ok) throw new Error('Stažení videa selhalo (HTTP ' + dl.status + ').');
+      return await dl.blob();
+    }
+  }
+  throw new Error('Vypršel časový limit čekání.');
+}
+
+const seState = { scenes: [], title: '', current: 0 };
+
+function seParseScript(text, count) {
+  let t = String(text || '').replace(/```json|```/gi, '').trim();
+  const s = t.indexOf('{'), e = t.lastIndexOf('}');
+  if (s >= 0 && e > s) t = t.slice(s, e + 1);
+  let j = null;
+  try { j = JSON.parse(t); } catch (err) { j = null; }
+  if (!j || !Array.isArray(j.scenes)) throw new Error('AI nevrátila scénář – zkus to znovu.');
+  return {
+    title: String(j.title || 'Můj seriál'),
+    scenes: j.scenes.slice(0, count).map((sc) => ({
+      visual: String(sc.visual || sc.prompt || '').trim(),
+      subtitle: String(sc.subtitle || sc.text || '').trim()
+    })).filter((sc) => sc.visual)
+  };
+}
+
+function seDrawCaption(ctx, text, W, H) {
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, H - 132, W, 76);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 30px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  const words = String(text || '').split(/\s+/);
+  let line = '';
+  const lines = [];
+  words.forEach((w) => {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > W - 60 && line) { lines.push(line); line = w; } else line = test;
+  });
+  if (line) lines.push(line);
+  lines.slice(0, 2).forEach((ln, i) => ctx.fillText(ln, W / 2, H - 100 + i * 36));
+  ctx.textAlign = 'start';
+}
+
+async function recordSeries() {
+  const scenes = seState.scenes;
+  const W = 540, H = 960;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const stream = c.captureStream(30);
+  const mime = window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+  const rec = new MediaRecorder(stream, { mimeType: mime });
+  const chunks = [];
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise((res) => { rec.onstop = res; });
+  rec.start(150);
+  for (let i = 0; i < scenes.length; i++) {
+    const v = document.createElement('video');
+    v.src = scenes[i].url;
+    v.playsInline = true;
+    v.muted = true;
+    await new Promise((res) => {
+      v.onloadeddata = res;
+      v.onerror = res;
+      setTimeout(res, 8000);
+    });
+    try { v.currentTime = 0; await v.play(); } catch (e) { /* pokračujeme */ }
+    await new Promise((res) => {
+      const t0 = performance.now();
+      let raf;
+      const tick = () => {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        const vr = (v.videoWidth || 9) / (v.videoHeight || 16);
+        let dw = W, dh = H;
+        if (vr > W / H) dh = W / vr; else dw = H * vr;
+        try { ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh); } catch (e) { }
+        seDrawCaption(ctx, scenes[i].subtitle, W, H);
+        if (v.ended || performance.now() - t0 > 16000) { cancelAnimationFrame(raf); res(); return; }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    });
+    try { v.pause(); } catch (e) { }
+  }
+  rec.stop();
+  await stopped;
+  return new Blob(chunks, { type: 'video/webm' });
+}
+
+function seShow() {
+  $('#seWrap').hidden = false;
+  seState.current = 0;
+  const p = $('#sePlayer');
+  p.src = seState.scenes[0].url;
+  $('#seCaption').textContent = seState.scenes[0].subtitle || '';
+  $('#seDots').innerHTML = seState.scenes.map((s, i) => '<i class="' + (i === 0 ? 'on' : '') + '"></i>').join('');
+  const dl = $('#seDownloads');
+  dl.innerHTML = '';
+  seState.scenes.forEach((s, i) => {
+    const a = document.createElement('a');
+    a.className = 'btn';
+    a.href = s.url;
+    a.download = 'scena-' + (i + 1) + '.mp4';
+    a.textContent = '⬇ Scéna ' + (i + 1);
+    dl.appendChild(a);
+  });
+  p.play().catch(() => {});
+  $('#seAgain').hidden = false;
+}
+
+function seGoto(i) {
+  seState.current = i;
+  const p = $('#sePlayer');
+  p.src = seState.scenes[i].url;
+  $('#seCaption').textContent = seState.scenes[i].subtitle || '';
+  const dots = $('#seDots').children;
+  for (let k = 0; k < dots.length; k++) dots[k].className = (k === i ? 'on' : '');
+  p.play().catch(() => {});
+}
+
+$('#sePlayer').addEventListener('ended', () => {
+  if (seState.current + 1 < seState.scenes.length) {
+    seGoto(seState.current + 1);
+  } else {
+    $('#seCaption').textContent = '🎞️ Konec dílu – stáhni si ho tlačítkem ⬇';
+  }
+});
+
+$('#seAgain').addEventListener('click', () => {
+  if (seState.scenes.length) seGoto(0);
+});
+
+$('#seGo').addEventListener('click', async () => {
+  const idea = $('#seIdea').value.trim();
+  if (!idea) { toast('Napiš námět děje.'); return; }
+  if (!settings.apiKey.trim()) { toast('Potřebuješ API klíč (Nastavení → Mozek 🧠).'); switchView('settings'); return; }
+  const btn = $('#seGo');
+  const status = $('#seStatus');
+  const count = parseInt($('#seCount').value, 10) || 3;
+  const style = $('#seStyle').value;
+  btn.disabled = true;
+  $('#seWrap').hidden = true;
+  seState.scenes = [];
+  try {
+    status.textContent = '🧠 Píšu scénář…';
+    const sys = 'Jsi kreativní scenárista krátkých virálních videí. Odpovídej POUZE platným JSON.';
+    const prompt = 'Vymysli mini-seriál (' + count + ' navazující scény) podle námětu: ' + idea +
+      '. Žánr a styl: ' + style + '. Odpovz POUZE JSON: {"title":"název česky","scenes":[{"visual":"detailní anglický popis záběru pro AI video generátor (postava, místo, kamera, světlo, atmosféra, 5-8 sekund)","subtitle":"český titulek nebo dialog scény (1-2 věty)"}]}. Scény ať na sebe navazují jako příběh.';
+    const r = await chatOnce([{ role: 'user', content: prompt }], sys);
+    const script = seParseScript(r.text, count);
+    if (!script.scenes.length) throw new Error('Scénář je prázdný – zkus to znovu.');
+    seState.title = script.title;
+    const scenes = [];
+    for (let i = 0; i < script.scenes.length; i++) {
+      const sc = script.scenes[i];
+      status.textContent = '🎞️ Scéna ' + (i + 1) + '/' + script.scenes.length + ' se generuje… (může trvat pár minut)';
+      try {
+        const blob = await veoGenerate(sc.visual, '9:16', (s) => {
+          status.textContent = '🎞️ Scéna ' + (i + 1) + '/' + script.scenes.length + ': ' + (s < 0 ? 'stahuji…' : ('čekám ' + s + ' s'));
+        });
+        scenes.push({ subtitle: sc.subtitle, url: URL.createObjectURL(blob) });
+      } catch (e) {
+        toast('Scéna ' + (i + 1) + ' se nepovedla: ' + (e.message || e));
+      }
+    }
+    if (!scenes.length) throw new Error('Žádná scéna se nevygenerovala – pokud Veo není na tvém klíči, použij „Video z textu“.');
+    seState.scenes = scenes;
+    seShow();
+    status.textContent = '✅ Hotovo! Díl „' + seState.title + '“ má ' + scenes.length + ' scén.';
+    toast('🎬 Seriál hotový!');
+  } catch (e) {
+    status.textContent = '❌ ' + (e.message || e);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('#seDl').addEventListener('click', async () => {
+  if (!seState.scenes.length) { toast('Nejdřív vytvoř seriál.'); return; }
+  const btn = $('#seDl');
+  const status = $('#seStatus');
+  btn.disabled = true;
+  try {
+    status.textContent = '⬇ Skládám celý díl…';
+    const blob = await recordSeries();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (seState.title || 'serial').replace(/[^\w\- ]/gi, '').trim().replace(/\s+/g, '-') + '.webm';
+    a.click();
+    status.textContent = '✅ Díl stažen! (jednotlivé scény najdeš pod přehrávačem)';
+    toast('⬇ Díl stažen');
+  } catch (e) {
+    status.textContent = '❌ Stažení selhalo: ' + (e.message || e);
   } finally {
     btn.disabled = false;
   }
