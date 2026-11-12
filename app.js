@@ -2042,6 +2042,236 @@ async function makeKineticVideo(text, audioBlob) {
   return new Blob(chunks, { type: mime || 'video/webm' });
 }
 
+/* --- Film ze scén (Shorts / TikTok / ReelShort styl) --- */
+function loadImage(src, timeoutMs) {
+  return new Promise((res) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    let done = false;
+    const fin = (v) => { if (!done) { done = true; res(v); } };
+    img.onload = () => fin(img);
+    img.onerror = () => fin(null);
+    img.src = src;
+    setTimeout(() => fin(null), timeoutMs || 20000);
+  });
+}
+
+async function sceneImage(prompt) {
+  if (!prompt) return null;
+  if (settings.apiKey.trim()) {
+    try {
+      const blob = await geminiImage(prompt);
+      const im = await loadImage(URL.createObjectURL(blob), 15000);
+      if (im) return im;
+    } catch (e) { /* zkusí se Pollinations */ }
+  }
+  try {
+    const u = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(String(prompt).slice(0, 200)) +
+      '?width=1080&height=1920&nologo=true&seed=' + Math.floor(Math.random() * 999999);
+    return await loadImage(u, 25000);
+  } catch (e) { return null; }
+}
+
+async function planScenes(text, nScenes) {
+  try {
+    const prompt = 'Rozděl tento text na ' + nScenes + ' scén pro krátké video. Odpověz POUZE JSON polem bez komentářů: ' +
+      '[{"caption":"titulek scény (max 8 slov, česky)","imagePrompt":"filmový popis obrázku ANGLICKY, cinematic, detailed"}]. Text: ' +
+      String(text).slice(0, 1500);
+    const r = await chatOnce([{ role: 'user', content: prompt }], 'Jsi scénárista krátkých videí. Odpovídáš pouze platným JSON polem.');
+    const m = String(r.text || '').match(/\[[\s\S]*\]/);
+    const arr = m ? JSON.parse(m[0]) : null;
+    if (arr && arr.length) {
+      return arr.slice(0, nScenes).map((s) => ({
+        caption: String(s.caption || '').slice(0, 110),
+        imagePrompt: String(s.imagePrompt || s.caption || '').slice(0, 220)
+      }));
+    }
+  } catch (e) { /* záložní rozdělení níže */ }
+  const parts = String(text).match(/[^.!?]+[.!?]*/g) || [String(text)];
+  const scenes = [];
+  for (let i = 0; i < nScenes; i++) {
+    const chunk = parts.slice(Math.floor(i * parts.length / nScenes), Math.floor((i + 1) * parts.length / nScenes)).join(' ').trim();
+    scenes.push({ caption: (chunk || ('Scéna ' + (i + 1))).slice(0, 110), imagePrompt: '' });
+  }
+  return scenes;
+}
+
+function drawCover(ctx, img, W, H, scale, panX) {
+  const r = Math.max(W / img.width, H / img.height) * scale;
+  const w = img.width * r, h = img.height * r;
+  ctx.drawImage(img, (W - w) / 2 + panX, (H - h) / 2, w, h);
+}
+
+function wrapLines(ctx, text, maxW) {
+  const words = String(text).split(' ');
+  const lines = []; let cur = '';
+  for (const w of words) {
+    const t = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = t;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+async function makeSceneFilm(scenes, audioBlob, aspect) {
+  if (!window.MediaRecorder) throw new Error('Tvůj prohlížeč neumí nahrávat video (MediaRecorder).');
+  const size = aspect === '16:9' ? [1280, 720] : aspect === '1:1' ? [1080, 1080] : [1080, 1920];
+  const canvas = document.createElement('canvas');
+  canvas.width = size[0]; canvas.height = size[1];
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const weights = scenes.map((s) => Math.max(2, String(s.caption || '').split(' ').length));
+  const wSum = weights.reduce((a, b) => a + b, 0) || 1;
+  const fr = []; let acc = 0;
+  weights.forEach((w) => { acc += w / wSum; fr.push(acc); });
+
+  let audioEl = null;
+  let dur = Math.max(6, scenes.length * 3.6);
+  if (audioBlob) {
+    audioEl = new Audio(URL.createObjectURL(audioBlob));
+    await new Promise((res) => {
+      const t = setTimeout(res, 4000);
+      audioEl.onloadedmetadata = () => { clearTimeout(t); res(); };
+      audioEl.onerror = () => { clearTimeout(t); res(); };
+    });
+    if (isFinite(audioEl.duration) && audioEl.duration > 0) dur = audioEl.duration;
+  }
+
+  const stream = canvas.captureStream(30);
+  let ac = null;
+  if (audioEl) {
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ac.createMediaElementSource(audioEl);
+      const dest = ac.createMediaStreamDestination();
+      src.connect(dest); src.connect(ac.destination);
+      dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
+    } catch (e) { ac = null; }
+  }
+
+  const mimes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+  const mime = mimes.find((m) => window.MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
+  const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+  const chunks = [];
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise((res) => { rec.onstop = res; });
+
+  const draw = (t) => {
+    const p = Math.max(0, Math.min(1, t / dur));
+    let idx = fr.findIndex((f) => p <= f);
+    if (idx < 0) idx = scenes.length - 1;
+    const start = idx === 0 ? 0 : fr[idx - 1];
+    const q = Math.max(0, Math.min(1, (p - start) / Math.max(0.0001, fr[idx] - start)));
+    const sc = scenes[idx];
+
+    if (sc.img) {
+      const zoom = 1.05 + q * 0.12;
+      const pan = (idx % 2 ? -1 : 1) * q * W * 0.03;
+      drawCover(ctx, sc.img, W, H, zoom, pan);
+    } else {
+      const g = ctx.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, '#17171c'); g.addColorStop(1, '#2b2b36');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    const top = ctx.createLinearGradient(0, 0, 0, H * 0.28);
+    top.addColorStop(0, 'rgba(10,10,14,0.72)'); top.addColorStop(1, 'rgba(10,10,14,0)');
+    ctx.fillStyle = top; ctx.fillRect(0, 0, W, H * 0.28);
+    const bot = ctx.createLinearGradient(0, H * 0.5, 0, H);
+    bot.addColorStop(0, 'rgba(10,10,14,0)'); bot.addColorStop(1, 'rgba(10,10,14,0.82)');
+    ctx.fillStyle = bot; ctx.fillRect(0, H * 0.5, W, H * 0.5);
+
+    const fs = Math.round(W * 0.052);
+    ctx.font = '700 ' + fs + 'px -apple-system, "Segoe UI", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lines = wrapLines(ctx, sc.caption || '', W * 0.82).slice(0, 4);
+    const startY = H * 0.72 - (lines.length - 1) * fs * 0.62;
+    ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = 14;
+    lines.forEach((ln, i) => {
+      ctx.fillStyle = '#fff';
+      ctx.fillText(ln, W / 2, startY + i * fs * 1.28);
+    });
+    ctx.shadowBlur = 0;
+
+    const segs = scenes.length, gap = 10, sw = (W - 80 - gap * (segs - 1)) / segs;
+    for (let i = 0; i < segs; i++) {
+      const x = 40 + i * (sw + gap);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(x, 42, sw, 8);
+      ctx.fillStyle = '#fff';
+      const fill = i < idx ? 1 : i === idx ? q : 0;
+      ctx.fillRect(x, 42, sw * fill, 8);
+    }
+
+    ctx.font = '500 ' + Math.round(W * 0.026) + 'px -apple-system, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillText('🤖 ' + (settings.name || 'Dark AI'), W / 2, H - Math.round(H * 0.028));
+  };
+
+  draw(0);
+  rec.start(150);
+  if (audioEl) { try { await audioEl.play(); } catch (e) {} }
+  const t0 = performance.now();
+  await new Promise((res) => {
+    let raf;
+    const tick = () => {
+      const t = (performance.now() - t0) / 1000;
+      draw(Math.min(t, dur));
+      const audioDone = !audioEl || audioEl.ended || audioEl.paused;
+      if (t >= dur && (audioDone || t > dur + 4)) { cancelAnimationFrame(raf); res(); return; }
+      if (t > dur + 8) { cancelAnimationFrame(raf); res(); return; }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  });
+  await sleep(350);
+  rec.stop();
+  await stopped;
+  if (ac) { try { ac.close(); } catch (e) {} }
+  return new Blob(chunks, { type: mime || 'video/webm' });
+}
+
+$('#stFilm').addEventListener('click', async () => {
+  const text = $('#stScript').value.trim();
+  if (!text) { toast('Napiš scénář do pole „Text k namluvení" výše – třeba krátký příběh.'); return; }
+  const btn = $('#stFilm');
+  btn.disabled = true;
+  const nScenes = parseInt($('#stFilmScenes').value, 10) || 4;
+  const aspect = $('#stFilmAspect').value || '9:16';
+  try {
+    btn.textContent = '🧠 Píšu scény…';
+    const scenes = await planScenes(text, nScenes);
+    toast('Kreslím obrázky ke scénám… chvilku strpení 🎨', 6000);
+    for (let i = 0; i < scenes.length; i++) {
+      btn.textContent = '🖼️ Obrázek ' + (i + 1) + '/' + scenes.length + '…';
+      scenes[i].img = await sceneImage(scenes[i].imagePrompt || scenes[i].caption);
+    }
+    let audioBlob = stAudioBlob;
+    if (!audioBlob && settings.apiKey.trim()) {
+      btn.textContent = '🎙️ Nahrávám hlas…';
+      try {
+        audioBlob = await geminiTTS(text);
+        stAudioBlob = audioBlob;
+        $('#stWav').href = URL.createObjectURL(audioBlob); $('#stWav').hidden = false;
+        $('#stPlay').disabled = false;
+      } catch (e) { /* video bude tiché */ }
+    }
+    btn.textContent = '🎬 Stříhám video…';
+    const blob = await makeSceneFilm(scenes, audioBlob, aspect);
+    const url = URL.createObjectURL(blob);
+    $('#stVideoPlayer').src = url;
+    $('#stVideoWrap').hidden = false;
+    $('#stVideoDl').href = url; $('#stVideoDl').hidden = false;
+    toast('Film hotový 🍿 Přehraj si ho nebo stáhni.');
+  } catch (e) {
+    toast('Film se nepodařilo vytvořit: ' + (e.message || e), 6000);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🎞️ Vytvořit film (scény + obrázky)';
+  }
+});
+
 /* --- Veo (experimentální) --- */
 $('#stVeoGo').addEventListener('click', async () => {
   const prompt = $('#stVeoPrompt').value.trim();
