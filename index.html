@@ -137,18 +137,6 @@
       </div>
 
       <div class="card">
-        <h3>📱 AI Shorts</h3>
-        <p class="muted">Vygeneruje krátké svislé video jako na TikToku / YouTube Shorts – scény, obrázky, komentář hlasem a velké titulky. Zadáš téma, zbytek udělá AI. Funguje zdarma přes Gemini.</p>
-        <textarea id="stShortPrompt" rows="2" placeholder="Téma shortu: např. 5 šílených faktů o vesmíru, příběh o drakovi, tipy na produktivitu…"></textarea>
-        <div class="row">
-          <button class="btn primary" id="stShortGo">📱 Vytvořit short</button>
-          <a class="btn" id="stShortDl" download="dark-ai-short.webm" hidden>⬇ Stáhnout video</a>
-        </div>
-        <p class="muted small" id="stShortStatus"></p>
-        <div id="stShortWrap" hidden><video id="stShortPlayer" controls playsinline style="max-height:60vh;border-radius:16px"></video></div>
-      </div>
-
-      <div class="card">
         <h3>🏗️ Weby, appky &amp; software</h3>
         <p class="muted">Popiš, co chceš – AI to postaví jako kompletní funkční projekt (stránka, hra, appka, nástroj) a rovnou ho uvidíš živě.</p>
         <textarea id="stProjPrompt" rows="3" placeholder="Např.: web mé kapely s přehrávačem, kalkulačka, jednoduchá hra had, dashboard, aplikace na poznámky…"></textarea>
@@ -188,6 +176,41 @@
         <p class="muted">Soubory, které ti AI vytvoří (řekni jí „ulož mi soubor…"). Stáhni si je do telefonu.</p>
         <div id="fileList"></div>
         <div class="row"><button class="btn" id="btnZip">⬇ Stáhnout vše jako .zip</button></div>
+      </div>
+
+      <div class="card">
+        <h3>🎬 Video seriál <span class="badge">Shorts</span></h3>
+        <p class="muted">Jako RealShort – krátká dramatická videa za sebou! Zadáš děj, AI napíše scénář a vygeneruje navazující scény (Google Veo, 9:16 na výšku). Každá scéna se generuje pár minut.</p>
+        <textarea id="seIdea" rows="3" placeholder="Námět děje (česky): např. dívka potká tajemného cizince v dešti v Tokiu, romantické drama se šťastným koncem…"></textarea>
+        <div class="row">
+          <select id="seStyle">
+            <option value="romantic drama, emotional, cinematic">💕 Romantika</option>
+            <option value="thriller, tense, dark cinematic">😱 Thriller</option>
+            <option value="comedy, funny, bright">😂 Komedie</option>
+            <option value="fantasy, magical, epic">🧙 Fantasy</option>
+            <option value="horror, scary, dark">👻 Horor</option>
+            <option value="action, dynamic, epic">💥 Akce</option>
+          </select>
+          <select id="seCount">
+            <option value="2">2 scény</option>
+            <option value="3" selected>3 scény</option>
+            <option value="4">4 scény</option>
+          </select>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="seGo">🎬 Vytvořit seriál</button>
+          <button class="btn" id="seAgain" hidden>▶ Přehrát znovu</button>
+          <button class="btn" id="seDl">⬇ Stáhnout celý díl</button>
+        </div>
+        <p class="muted small" id="seStatus"></p>
+        <div id="seWrap" hidden>
+          <div class="se-phone">
+            <video id="sePlayer" playsinline></video>
+            <div id="seCaption"></div>
+            <div id="seDots"></div>
+          </div>
+          <div id="seDownloads" class="row"></div>
+        </div>
       </div>
 
       <div class="card">
