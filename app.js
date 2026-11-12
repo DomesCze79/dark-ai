@@ -2052,47 +2052,9 @@ $('#stVeoGo').addEventListener('click', async () => {
   btn.disabled = true;
   status.textContent = 'Spouštím generování…';
   try {
-    const key = settings.apiKey.trim();
-    const model = (settings.veoModel || 'veo-3.1-generate-preview').trim();
-    const base = 'https://generativelanguage.googleapis.com/v1beta';
-    const res = await fetch(base + '/models/' + encodeURIComponent(model) + ':predictLongRunning?key=' + encodeURIComponent(key), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        instances: [{ prompt: prompt }],
-        parameters: { aspectRatio: $('#stVeoAspect').value }
-      })
+    const videoBlob = await veoGenerate(prompt, $('#stVeoAspect').value, (s) => {
+      status.textContent = s < 0 ? 'Stahuji video…' : ('⏳ Generuji video… ' + s + ' s (video se tvoří i několik minut)');
     });
-    const j = await res.json().catch(() => ({}));
-    if (!res.ok || j.error) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
-    const opName = j.name;
-    if (!opName) throw new Error('API nevrátilo operaci.');
-    let videoBlob = null;
-    for (let i = 0; i < 75; i++) {
-      status.textContent = '⏳ Generuji video… ' + (i * 8) + ' s (video se tvoří i několik minut)';
-      await sleep(8000);
-      const sres = await fetch(base + '/' + opName + '?key=' + encodeURIComponent(key));
-      const sj = await sres.json().catch(() => ({}));
-      if (sj.error) throw new Error(sj.error.message || 'Chyba operace.');
-      if (sj.done) {
-        if (sj.error || (sj.response && sj.response.error)) {
-          throw new Error((sj.error && sj.error.message) || (sj.response && sj.response.error && sj.response.error.message) || 'Generování selhalo.');
-        }
-        const gvr = sj.response && sj.response.generateVideoResponse;
-        const sample = gvr && gvr.generatedSamples && gvr.generatedSamples[0];
-        const uri = sample && sample.video && sample.video.uri;
-        if (!uri) throw new Error('Video nebylo vytvořeno (možná ho zablokovaly bezpečnostní filtry).');
-        status.textContent = 'Stahuji video…';
-        let dl = await fetch(uri, { headers: { 'x-goog-api-key': key } });
-        if (!dl.ok) {
-          dl = await fetch(uri + (uri.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(key));
-        }
-        if (!dl.ok) throw new Error('Stažení videa selhalo (HTTP ' + dl.status + ').');
-        videoBlob = await dl.blob();
-        break;
-      }
-    }
-    if (!videoBlob) throw new Error('Vypršel časový limit čekání.');
     const url = URL.createObjectURL(videoBlob);
     $('#stVeoPlayer').src = url;
     $('#stVeoWrap').hidden = false;
@@ -2100,17 +2062,63 @@ $('#stVeoGo').addEventListener('click', async () => {
     status.textContent = '✅ Hotovo!';
     toast('AI video hotové ✨');
   } catch (e) {
-    status.textContent = '❌ ' + (e.message || e) + ' – pokud Veo není na tvém klíči dostupné, použij „Video z textu" výše.';
+    status.textContent = '❌ ' + (e.message || e);
   } finally {
     btn.disabled = false;
   }
 });
 
 /* --- Video seriál (Shorts / RealShort styl) --- */
+let VEO_CANDIDATES = null, VEO_CANDIDATES_KEY = null;
+async function veoModelCandidates() {
+  const key = (settings.apiKey || '').trim();
+  if (VEO_CANDIDATES && VEO_CANDIDATES_KEY === key) return VEO_CANDIDATES;
+  let avail = null;
+  try {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=' + encodeURIComponent(key));
+    const j = await res.json().catch(() => ({}));
+    if (Array.isArray(j.models)) {
+      avail = j.models
+        .filter((m) => /veo/i.test(m.name || '') && (m.supportedGenerationMethods || []).indexOf('predictLongRunning') >= 0)
+        .map((m) => String(m.name).replace(/^models\//, ''));
+    }
+  } catch (e) { /* nevadí – zkusí se výchozí názvy */ }
+  const pref = [];
+  if (settings.veoModel) pref.push(settings.veoModel.trim());
+  ['veo-3.1-generate-preview', 'veo-3.1-fast-generate-preview', 'veo-3.1-lite-generate-preview', 'veo-3.0-generate-preview'].forEach((p) => {
+    if (pref.indexOf(p) < 0) pref.push(p);
+  });
+  if (avail) {
+    VEO_CANDIDATES = pref.filter((p) => avail.indexOf(p) >= 0).concat(avail.filter((p) => pref.indexOf(p) < 0));
+    if (!VEO_CANDIDATES.length) VEO_CANDIDATES = ['__none__'];
+  } else {
+    VEO_CANDIDATES = pref;
+  }
+  VEO_CANDIDATES_KEY = key;
+  return VEO_CANDIDATES;
+}
+
 async function veoGenerate(prompt, aspect, statusCb) {
   const key = (settings.apiKey || '').trim();
-  const model = (settings.veoModel || 'veo-3.1-generate-preview').trim();
   const base = 'https://generativelanguage.googleapis.com/v1beta';
+  const candidates = await veoModelCandidates();
+  if (candidates.length === 1 && candidates[0] === '__none__') {
+    throw new Error('Na tvém API klíči není žádný video model (Veo). Zdarma klíče Google ho většinou nemají – zkus „Video z textu“ (funguje vždy) nebo placený režim Google AI.');
+  }
+  let lastErr = null;
+  for (let ci = 0; ci < candidates.length; ci++) {
+    try {
+      return await veoTryModel(candidates[ci], prompt, aspect, key, base, statusCb);
+    } catch (e) {
+      const m = String((e && e.message) || e);
+      if (/not found|not supported|does not exist/i.test(m)) { lastErr = e; continue; }
+      throw e;
+    }
+  }
+  throw lastErr || new Error('Video model (Veo) se na tvém klíči nenašel – zkus „Video z textu“.');
+}
+
+async function veoTryModel(model, prompt, aspect, key, base, statusCb) {
   const res = await fetch(base + '/models/' + encodeURIComponent(model) + ':predictLongRunning?key=' + encodeURIComponent(key), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
