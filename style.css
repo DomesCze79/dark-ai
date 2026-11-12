@@ -463,3 +463,5 @@ audio { filter: invert(0.92) hue-rotate(180deg); }
 #seDots { position: absolute; bottom: 14px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
 #seDots i { width: 22px; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.35); }
 #seDots i.on { background: var(--accent, #b9b9c4); }
+
+[hidden] { display: none !important; }
