@@ -1943,10 +1943,10 @@ $('#stVideo').addEventListener('click', async () => {
   }
 });
 
-async function makeKineticVideo(text, audioBlob) {
+async function makeKineticVideo(text, audioBlob, size) {
   if (!window.MediaRecorder) throw new Error('Tvůj prohlížeč neumí nahrávat video (MediaRecorder).');
   const canvas = document.createElement('canvas');
-  canvas.width = 1280; canvas.height = 720;
+  canvas.width = (size && size[0]) || 1280; canvas.height = (size && size[1]) || 720;
   const ctx = canvas.getContext('2d');
   const words = text.replace(/\s+/g, ' ').trim().split(' ').slice(0, 400);
 
@@ -1985,10 +1985,10 @@ async function makeKineticVideo(text, audioBlob) {
   const draw = (p) => {
     const W = canvas.width, H = canvas.height;
     const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#1a0d10'); g.addColorStop(1, '#45090f');
+    g.addColorStop(0, '#0c0c0e'); g.addColorStop(1, '#23232b');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     const rg = ctx.createRadialGradient(W * 0.82, H * 0.18, 40, W * 0.82, H * 0.18, 520);
-    rg.addColorStop(0, 'rgba(229,9,20,0.35)'); rg.addColorStop(1, 'rgba(229,9,20,0)');
+    rg.addColorStop(0, 'rgba(185,185,196,0.22)'); rg.addColorStop(1, 'rgba(185,185,196,0)');
     ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
 
     const total = words.length;
@@ -2298,19 +2298,34 @@ $('#seGo').addEventListener('click', async () => {
     if (!script.scenes.length) throw new Error('Scénář je prázdný – zkus to znovu.');
     seState.title = script.title;
     const scenes = [];
+    let fallbackNotified = false;
     for (let i = 0; i < script.scenes.length; i++) {
       const sc = script.scenes[i];
       status.textContent = '🎞️ Scéna ' + (i + 1) + '/' + script.scenes.length + ' se generuje… (může trvat pár minut)';
+      let blob = null;
       try {
-        const blob = await veoGenerate(sc.visual, '9:16', (s) => {
+        blob = await veoGenerate(sc.visual, '9:16', (s) => {
           status.textContent = '🎞️ Scéna ' + (i + 1) + '/' + script.scenes.length + ': ' + (s < 0 ? 'stahuji…' : ('čekám ' + s + ' s'));
         });
-        scenes.push({ subtitle: sc.subtitle, url: URL.createObjectURL(blob) });
       } catch (e) {
-        toast('Scéna ' + (i + 1) + ' se nepovedla: ' + (e.message || e));
+        if (!fallbackNotified) {
+          fallbackNotified = true;
+          toast('🎞️ Video AI není k dispozici – točím seriál v záložním režimu (dabovaný text). Funguje vždy zdarma!', 6000);
+        }
+        status.textContent = '🎙️ Scéna ' + (i + 1) + '/' + script.scenes.length + ': dabuji text (záložní režim)…';
+        try {
+          let audioBlob = null;
+          if (settings.apiKey.trim()) {
+            try { audioBlob = await geminiTTS(sc.subtitle || sc.visual); } catch (e2) { /* tiché video */ }
+          }
+          blob = await makeKineticVideo(sc.subtitle || sc.visual, audioBlob, [720, 1280]);
+        } catch (e2) {
+          toast('Scéna ' + (i + 1) + ' se nepovedla: ' + (e2.message || e2));
+        }
       }
+      if (blob) scenes.push({ subtitle: sc.subtitle, url: URL.createObjectURL(blob) });
     }
-    if (!scenes.length) throw new Error('Žádná scéna se nevygenerovala – pokud Veo není na tvém klíči, použij „Video z textu“.');
+    if (!scenes.length) throw new Error('Žádná scéna se nevygenerovala – zkus to prosím znovu.');
     seState.scenes = scenes;
     seShow();
     status.textContent = '✅ Hotovo! Díl „' + seState.title + '“ má ' + scenes.length + ' scén.';
