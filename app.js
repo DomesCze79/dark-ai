@@ -2062,19 +2062,25 @@ $('#stVeoGo').addEventListener('click', async () => {
     status.textContent = '✅ Hotovo!';
     toast('AI video hotové ✨');
   } catch (e) {
-    status.textContent = '🎙️ Filmové video (Veo) tvůj klíč nemá – točím dabované textové video (záložní režim)…';
+    status.textContent = '🎙️ Filmové video (Veo) tvůj klíč nemá – píšu příběh a točím dabované video…';
     try {
+      let story = prompt;
+      try {
+        const r = await chatOnce([{ role: 'user', content: 'Napiš krátký dramatický příběh podle tohoto námětu pro dabované video: ' + prompt + '. Napiš 5-8 vět česky, napínavě a živě, jako vyprávění příběhu. POUZE text příběhu, žádné nadpisy ani komentáře.' }], 'Jsi mistr dramatického vyprávění. Odpovídej POUZE textem příběhu.');
+        if (r && r.text && r.text.trim()) story = r.text.trim();
+      } catch (e2) { /* zůstane námět */ }
       let audioBlob = null;
       if (settings.apiKey.trim()) {
-        try { audioBlob = await geminiTTS(prompt); } catch (e2) { /* tiché video */ }
+        try { audioBlob = await geminiTTS(story); } catch (e2) { /* tiché video */ }
       }
-      const blob = await makeKineticVideo(prompt, audioBlob, [720, 1280]);
+      const blob = await makeKineticVideo(story, audioBlob, [720, 1280]);
       const url = URL.createObjectURL(blob);
       $('#stVeoPlayer').src = url;
       $('#stVeoWrap').hidden = false;
       $('#stVeoDl').href = url;
-      status.textContent = '✅ Hotovo v záložním režimu (dabované textové video – pravé filmové záběry zdarma klíč nemá).';
-      toast('🎬 Video hotové (záložní režim)');
+      $('#stVeoDl').download = 'dark-ai-pribeh.webm';
+      status.textContent = '✅ Hotovo! (záložní režim: dabovaný příběh – pravé filmové záběry zdarma klíč nemá)';
+      toast('🎬 Příběh hotový (záložní režim)');
     } catch (e2) {
       status.textContent = '❌ ' + (e.message || e);
     }
