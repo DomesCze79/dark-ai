@@ -137,6 +137,28 @@
       </div>
 
       <div class="card">
+        <h3>🎞️ Film ze scén (Shorts / TikTok)</h3>
+        <p class="muted">AI rozdělí text na scény, nakreslí obrázky, přidá hlas a sestříhá krátké video – jako ReelShort / Shorts. Scénář vezme z pole „Text k namluvení" v kartě výše.</p>
+        <div class="row">
+          <select id="stFilmAspect">
+            <option value="9:16">📱 9:16 (Shorts / TikTok)</option>
+            <option value="16:9">🖥️ 16:9 (YouTube)</option>
+            <option value="1:1">⬛ 1:1</option>
+          </select>
+          <select id="stFilmScenes">
+            <option value="3">3 scény</option>
+            <option value="4" selected>4 scény</option>
+            <option value="5">5 scén</option>
+            <option value="6">6 scén</option>
+          </select>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="stFilm">🎞️ Vytvořit film (scény + obrázky)</button>
+        </div>
+        <p class="muted small">Tip: napiš scénář na 5–15 vět (příběh, fakt, motivace…). Obrázky kreslí Gemini (záložně zdarma Pollinations), hlas je Gemini dabing.</p>
+      </div>
+
+      <div class="card">
         <h3>🏗️ Weby, appky &amp; software</h3>
         <p class="muted">Popiš, co chceš – AI to postaví jako kompletní funkční projekt (stránka, hra, appka, nástroj) a rovnou ho uvidíš živě.</p>
         <textarea id="stProjPrompt" rows="3" placeholder="Např.: web mé kapely s přehrávačem, kalkulačka, jednoduchá hra had, dashboard, aplikace na poznámky…"></textarea>
