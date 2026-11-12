@@ -3007,9 +3007,19 @@ function init() {
     let reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (reloaded) return;
+      const inp = document.querySelector('#input');
+      if (inp && inp.value && inp.value.trim()) {
+        toast('🔄 Je nová verze appky – zavři a otevři ji pro aktualizaci.');
+        return;
+      }
       reloaded = true;
       location.reload();
     });
+    const checkUpd = () => {
+      navigator.serviceWorker.getRegistration().then((r) => { if (r) r.update().catch(() => {}); }).catch(() => {});
+    };
+    setInterval(checkUpd, 30 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpd(); });
   }
 }
 
